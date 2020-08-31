@@ -3,6 +3,8 @@ package reconciler
 import (
 	"time"
 
+	"k8s.io/client-go/tools/record"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	"github.com/go-logr/logr"
@@ -13,13 +15,14 @@ import (
 )
 
 // NewReconciler creates new Reconciler instance configured with given parameters
-func NewReconciler(crManager CrManager, log logr.Logger, client client.Client, callbackDispatcher CallbackDispatcher, scheme *runtime.Scheme, createVersionLabel string, updateVersionLabel string, lastAppliedConfigAnnotation string, perishablesSyncInterval time.Duration, finalizerName string) *Reconciler {
+func NewReconciler(crManager CrManager, log logr.Logger, client client.Client, callbackDispatcher CallbackDispatcher, scheme *runtime.Scheme, createVersionLabel string, updateVersionLabel string, lastAppliedConfigAnnotation string, perishablesSyncInterval time.Duration, finalizerName string, recorder record.EventRecorder) *Reconciler {
 	return &Reconciler{
 		crManager:                     crManager,
 		log:                           log,
 		client:                        client,
 		callbackDispatcher:            callbackDispatcher,
 		scheme:                        scheme,
+		recorder:                      recorder,
 		createVersionLabel:            createVersionLabel,
 		updateVersionLabel:            updateVersionLabel,
 		lastAppliedConfigAnnotation:   lastAppliedConfigAnnotation,

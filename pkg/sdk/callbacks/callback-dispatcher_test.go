@@ -3,6 +3,8 @@ package callbacks_test
 import (
 	"fmt"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
 	testcr "github.com/kubevirt/controller-lifecycle-operator-sdk/tests/cr"
 	. "github.com/onsi/ginkgo"
@@ -19,6 +21,7 @@ const (
 )
 
 var _ = Describe("Callback dispatcher ", func() {
+	recorder := &record.FakeRecorder{}
 	log := logf.Log.WithName("tests")
 	s := scheme.Scheme
 	existingService := v1.Service{
@@ -48,7 +51,7 @@ var _ = Describe("Callback dispatcher ", func() {
 
 		By("invoking callback")
 
-		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, &currentObj)
+		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, &currentObj, recorder)
 
 		Expect(err).ToNot(HaveOccurred())
 
@@ -82,7 +85,7 @@ var _ = Describe("Callback dispatcher ", func() {
 
 		By("invoking callback")
 
-		err := cd.InvokeCallbacks(log, cr, reconcileState, nil, &currentObj)
+		err := cd.InvokeCallbacks(log, cr, reconcileState, nil, &currentObj, recorder)
 
 		Expect(err).ToNot(HaveOccurred())
 
@@ -121,7 +124,7 @@ var _ = Describe("Callback dispatcher ", func() {
 
 		By("invoking callback")
 
-		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, nil)
+		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, nil, recorder)
 
 		Expect(err).ToNot(HaveOccurred())
 
@@ -163,7 +166,7 @@ var _ = Describe("Callback dispatcher ", func() {
 
 		By("invoking callback")
 
-		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, nil)
+		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, nil, recorder)
 
 		Expect(err).ToNot(HaveOccurred())
 
@@ -196,7 +199,7 @@ var _ = Describe("Callback dispatcher ", func() {
 
 		By("invoking callback")
 
-		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, &currentObj)
+		err := cd.InvokeCallbacks(log, cr, reconcileState, &desiredObj, &currentObj, recorder)
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(Equal(callbackError))
 	})

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -29,6 +31,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+const (
+	createResourceFailed  = "CreateResourceFailed"
+	createResourceSuccess = "CreateResourceSuccess"
+
+	deleteResourceFailed  = "DeleteResourceFailed"
+	deleteResourceSuccess = "DeleteResourceSuccess"
+
+	updateResourceFailed  = "UpdateResourceFailed"
+	updateResourceSuccess = "UpdateResourceSuccess"
 )
 
 // PerishablesSynchronizer is expected to execute perishable resources (i.e. certificates) synchronization if required
@@ -66,7 +79,7 @@ type CallbackDispatcher interface {
 	AddCallback(runtime.Object, callbacks.ReconcileCallback)
 
 	// InvokeCallbacks executes callbacks for desired/current object type
-	InvokeCallbacks(l logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object) error
+	InvokeCallbacks(l logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object, recorder record.EventRecorder) error
 }
 
 // Reconciler is responsible for performing deployment reconciliation
@@ -86,6 +99,7 @@ type Reconciler struct {
 	lastAppliedConfigAnnotation string
 	updateVersionLabel          string
 	scheme                      *runtime.Scheme
+	recorder                    record.EventRecorder
 	perishablesSyncInterval     time.Duration
 	finalizerName               string
 
@@ -151,7 +165,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request, operatorVersion string
 		reqLogger.Info("Pre-create hook executed successfully")
 
 		status := r.crManager.Status(cr)
-		sdk.MarkCrDeploying(status, "DeployStarted", "Started Deployment")
+		sdk.MarkCrDeploying(cr, status, "DeployStarted", "Started Deployment", r.recorder)
 
 		if err := r.CrInit(cr, operatorVersion); err != nil {
 			return reconcile.Result{}, err
@@ -215,11 +229,13 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr controllerutil.Objec
 			sdk.SetLabel(r.createVersionLabel, operatorVersion, desiredMetaObj)
 
 			if err = controllerutil.SetControllerReference(cr, desiredMetaObj, r.scheme); err != nil {
+				r.recorder.Event(cr, corev1.EventTypeWarning, createResourceFailed, fmt.Sprintf("Failed to create resource %s, %v", desiredMetaObj.GetName(), err))
 				return reconcile.Result{}, err
 			}
 
 			// PRE_CREATE callback
-			if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePreCreate, desiredRuntimeObj, nil); err != nil {
+			if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePreCreate, desiredRuntimeObj, nil, r.recorder); err != nil {
+				r.recorder.Event(cr, corev1.EventTypeWarning, createResourceFailed, fmt.Sprintf("Failed to create resource %s, %v", desiredMetaObj.GetName(), err))
 				return reconcile.Result{}, err
 			}
 
@@ -227,11 +243,13 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr controllerutil.Objec
 			if err = r.client.Create(context.TODO(), currentRuntimeObj); err != nil {
 				logger.Error(err, "")
 				allErrors = append(allErrors, err)
+				r.recorder.Event(cr, corev1.EventTypeWarning, createResourceFailed, fmt.Sprintf("Failed to create resource %s, %v", desiredMetaObj.GetName(), err))
 				continue
 			}
 
 			// POST_CREATE callback
-			if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostCreate, desiredRuntimeObj, nil); err != nil {
+			if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostCreate, desiredRuntimeObj, nil, r.recorder); err != nil {
+				r.recorder.Event(cr, corev1.EventTypeWarning, createResourceFailed, fmt.Sprintf("Failed to create resource %s, %v", desiredMetaObj.GetName(), err))
 				return reconcile.Result{}, err
 			}
 
@@ -239,9 +257,10 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr controllerutil.Objec
 				"namespace", desiredMetaObj.GetNamespace(),
 				"name", desiredMetaObj.GetName(),
 				"type", fmt.Sprintf("%T", desiredMetaObj))
+			r.recorder.Event(cr, corev1.EventTypeNormal, createResourceSuccess, fmt.Sprintf("Successfully created resource %T %s", desiredMetaObj, desiredMetaObj.GetName()))
 		} else {
 			// POST_READ callback
-			if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostRead, desiredRuntimeObj, currentRuntimeObj); err != nil {
+			if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostRead, desiredRuntimeObj, currentRuntimeObj, r.recorder); err != nil {
 				return reconcile.Result{}, err
 			}
 
@@ -271,18 +290,21 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr controllerutil.Objec
 				sdk.SetLabel(r.updateVersionLabel, operatorVersion, currentMetaObj)
 
 				// PRE_UPDATE callback
-				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePreUpdate, desiredRuntimeObj, currentRuntimeObj); err != nil {
+				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePreUpdate, desiredRuntimeObj, currentRuntimeObj, r.recorder); err != nil {
+					r.recorder.Event(cr, corev1.EventTypeWarning, updateResourceFailed, fmt.Sprintf("Failed to update resource %s, %v", desiredMetaObj.GetName(), err))
 					return reconcile.Result{}, err
 				}
 
 				if err = r.client.Update(context.TODO(), currentRuntimeObj); err != nil {
 					logger.Error(err, "")
 					allErrors = append(allErrors, err)
+					r.recorder.Event(cr, corev1.EventTypeWarning, updateResourceFailed, fmt.Sprintf("Failed to update resource %s, %v", desiredMetaObj.GetName(), err))
 					continue
 				}
 
 				// POST_UPDATE callback
-				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostUpdate, desiredRuntimeObj, nil); err != nil {
+				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostUpdate, desiredRuntimeObj, nil, r.recorder); err != nil {
+					r.recorder.Event(cr, corev1.EventTypeWarning, updateResourceFailed, fmt.Sprintf("Failed to update resource %s, %v", desiredMetaObj.GetName(), err))
 					return reconcile.Result{}, err
 				}
 
@@ -290,6 +312,7 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr controllerutil.Objec
 					"namespace", desiredMetaObj.GetNamespace(),
 					"name", desiredMetaObj.GetName(),
 					"type", fmt.Sprintf("%T", desiredMetaObj))
+				r.recorder.Event(cr, corev1.EventTypeNormal, updateResourceSuccess, fmt.Sprintf("Successfully updated resource %T %s", desiredMetaObj, desiredMetaObj.GetName()))
 			} else {
 				logger.V(3).Info("Resource unchanged",
 					"namespace", desiredMetaObj.GetNamespace(),
@@ -316,7 +339,7 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr controllerutil.Objec
 	if status.Phase != sdkapi.PhaseDeployed && !sdk.IsUpgrading(status) && !degraded {
 		//We are not moving to Deployed phase until new operator deployment is ready in case of Upgrade
 		status.ObservedVersion = operatorVersion
-		sdk.MarkCrHealthyMessage(status, "DeployCompleted", "Deployment Completed")
+		sdk.MarkCrHealthyMessage(cr, status, "DeployCompleted", "Deployment Completed", r.recorder)
 		if err = r.CrUpdate(sdkapi.PhaseDeployed, cr); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -422,7 +445,7 @@ func (r *Reconciler) WatchDependantResources(cr runtime.Object) error {
 // ReconcileError Marks CR as failed
 func (r *Reconciler) ReconcileError(cr runtime.Object, message string) (reconcile.Result, error) {
 	status := r.status(cr)
-	sdk.MarkCrFailed(status, "ConfigError", message)
+	sdk.MarkCrFailed(cr, status, "ConfigError", message, r.recorder)
 	if err := r.CrUpdate(status.Phase, cr); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -483,7 +506,7 @@ func (r *Reconciler) InvokeDeleteCallbacks(logger logr.Logger, cr runtime.Object
 	}
 
 	for _, desiredObj := range desiredResources {
-		if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStateOperatorDelete, desiredObj, nil); err != nil {
+		if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStateOperatorDelete, desiredObj, nil, r.recorder); err != nil {
 			return err
 		}
 	}
@@ -516,8 +539,8 @@ func (r *Reconciler) WatchCR() error {
 }
 
 // InvokeCallbacks executes callbacks registered
-func (r *Reconciler) InvokeCallbacks(l logr.Logger, cr runtime.Object, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object) error {
-	return r.callbackDispatcher.InvokeCallbacks(l, cr, s, desiredObj, currentObj)
+func (r *Reconciler) InvokeCallbacks(l logr.Logger, cr runtime.Object, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object, recorder record.EventRecorder) error {
+	return r.callbackDispatcher.InvokeCallbacks(l, cr, s, desiredObj, currentObj, recorder)
 }
 
 // WatchResourceTypes registers watches for given resources types
@@ -579,7 +602,8 @@ func (r *Reconciler) CheckUpgrade(logger logr.Logger, cr runtime.Object, targetV
 
 	if isUpgrade && status.Phase != sdkapi.PhaseUpgrading {
 		logger.Info("Observed version is not target version. Begin upgrade", "Observed version ", status.ObservedVersion, "TargetVersion", targetVersion)
-		sdk.MarkCrUpgradeHealingDegraded(status, "UpgradeStarted", fmt.Sprintf("Started upgrade to version %s", targetVersion))
+		sdk.MarkCrUpgradeHealingDegraded(cr, status, "UpgradeStarted", fmt.Sprintf("Started upgrade to version %s", targetVersion), r.recorder)
+		status.TargetVersion = targetVersion
 		if err := r.CrUpdate(sdkapi.PhaseUpgrading, cr); err != nil {
 			return err
 		}
@@ -631,7 +655,8 @@ func (r *Reconciler) CleanupUnusedResources(logger logr.Logger, cr controlleruti
 
 			if !found && metav1.IsControlledBy(observedMetaObj, cr) {
 				//Invoke pre delete callback
-				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePreDelete, nil, observedObj); err != nil {
+				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePreDelete, nil, observedObj, r.recorder); err != nil {
+					r.recorder.Event(cr, corev1.EventTypeWarning, deleteResourceFailed, fmt.Sprintf("Failed deleting resource %s, %v", observedMetaObj.GetName(), err))
 					return err
 				}
 
@@ -640,13 +665,16 @@ func (r *Reconciler) CleanupUnusedResources(logger logr.Logger, cr controlleruti
 					PropagationPolicy: &[]metav1.DeletionPropagation{metav1.DeletePropagationForeground}[0],
 				})
 				if err != nil && !errors.IsNotFound(err) {
+					r.recorder.Event(cr, corev1.EventTypeWarning, deleteResourceFailed, fmt.Sprintf("Failed deleting resource %s, %v", observedMetaObj.GetName(), err))
 					return err
 				}
 
 				//invoke post delete callback
-				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostDelete, nil, observedObj); err != nil {
+				if err = r.InvokeCallbacks(logger, cr, callbacks.ReconcileStatePostDelete, nil, observedObj, r.recorder); err != nil {
+					r.recorder.Event(cr, corev1.EventTypeWarning, deleteResourceFailed, fmt.Sprintf("Failed deleting resource %s, %v", observedMetaObj.GetName(), err))
 					return err
 				}
+				r.recorder.Event(cr, corev1.EventTypeNormal, deleteResourceSuccess, fmt.Sprintf("Successfully deleted resource %T %s", observedMetaObj, observedMetaObj.GetName()))
 			}
 		}
 	}
@@ -727,7 +755,7 @@ func (r *Reconciler) completeUpgrade(logger logr.Logger, cr controllerutil.Objec
 	previousVersion := status.ObservedVersion
 	status.ObservedVersion = operatorVersion
 
-	sdk.MarkCrHealthyMessage(status, "DeployCompleted", "Deployment Completed")
+	sdk.MarkCrHealthyMessage(cr, status, "DeployCompleted", "Deployment Completed", r.recorder)
 	if err := r.CrUpdate(sdkapi.PhaseDeployed, cr); err != nil {
 		return err
 	}

@@ -20,6 +20,8 @@ import (
 	"context"
 	"reflect"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk"
 
 	"github.com/go-logr/logr"
@@ -64,6 +66,7 @@ type ReconcileCallbackArgs struct {
 	Logger    logr.Logger
 	Client    client.Client
 	Scheme    *runtime.Scheme
+	Recorder  record.EventRecorder
 	Namespace string
 	Resource  interface{}
 
@@ -110,7 +113,7 @@ func (cd *CallbackDispatcher) AddCallback(obj runtime.Object, cb ReconcileCallba
 }
 
 // InvokeCallbacks executes callbacks for desired/current object type
-func (cd *CallbackDispatcher) InvokeCallbacks(l logr.Logger, cr interface{}, s ReconcileState, desiredObj, currentObj runtime.Object) error {
+func (cd *CallbackDispatcher) InvokeCallbacks(l logr.Logger, cr interface{}, s ReconcileState, desiredObj, currentObj runtime.Object, recorder record.EventRecorder) error {
 	var t reflect.Type
 
 	if desiredObj != nil {
@@ -142,6 +145,7 @@ func (cd *CallbackDispatcher) InvokeCallbacks(l logr.Logger, cr interface{}, s R
 			Logger:        l,
 			Client:        cd.uncachedClient,
 			Scheme:        cd.scheme,
+			Recorder:      recorder,
 			Namespace:     cd.namespace,
 			State:         s,
 			DesiredObject: desiredObj,

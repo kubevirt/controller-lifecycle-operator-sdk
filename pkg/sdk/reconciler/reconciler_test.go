@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/client-go/tools/record"
+
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -51,12 +53,15 @@ type args struct {
 	reconciler     *reconciler.Reconciler
 	version        string
 	mockController *mocks.MockController
+	recorder       *record.FakeRecorder
 }
 
 const (
 	finalizerName      = "my-finalizer"
 	version            = "v1.5.0"
 	createVersionLabel = "create-version"
+
+	normalCreateSuccess = "Normal CreateResourceSuccess Successfully created resource"
 )
 
 var log = logf.Log.WithName("tests")
@@ -145,6 +150,7 @@ var _ = Describe("Reconciler", func() {
 				Expect(v1.IsStatusConditionFalse(args.config.Status.Conditions, v1.ConditionDegraded)).To(BeTrue())
 
 				Expect(args.config.Finalizers).Should(HaveLen(1))
+				validateEvents(args.recorder, createReadyEventValidationMap())
 			})
 
 			It("should become ready", func() {
@@ -152,6 +158,7 @@ var _ = Describe("Reconciler", func() {
 				doReconcile(args)
 
 				Expect(setDeploymentsReady(args)).To(BeTrue())
+				validateEvents(args.recorder, createReadyEventValidationMap())
 			})
 
 			It("should create all resources", func() {
@@ -164,6 +171,7 @@ var _ = Describe("Reconciler", func() {
 					_, err := getObject(args.client, r)
 					Expect(err).ToNot(HaveOccurred())
 				}
+				validateEvents(args.recorder, createNotReadyEventValidationMap())
 			})
 
 			It("should delete", func() {
@@ -642,16 +650,16 @@ func createClient(scheme *runtime.Scheme, objs ...runtime.Object) realClient.Cli
 	return fakeClient.NewFakeClientWithScheme(scheme, objs...)
 }
 
-func createReconciler(client realClient.Client, s *runtime.Scheme) *reconciler.Reconciler {
+func createReconciler(client realClient.Client, s *runtime.Scheme, recorder record.EventRecorder) *reconciler.Reconciler {
 	crManager := &testcr.ConfigCrManager{}
-	return reconciler.NewReconciler(crManager, log, client, callbackDispatcher, s, createVersionLabel, "update-version", "last-applied-config", 0, finalizerName)
+	return reconciler.NewReconciler(crManager, log, client, callbackDispatcher, s, createVersionLabel, "update-version", "last-applied-config", 0, finalizerName, recorder)
 }
 
 func createConfig(name, uid string) *testcr.Config {
 	return &testcr.Config{ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID(uid)}, Status: testcr.ConfigStatus{}}
 }
 
-func (m *mockCallbackDispatcher) InvokeCallbacks(_ logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object) error {
+func (m *mockCallbackDispatcher) InvokeCallbacks(_ logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object, recorder record.EventRecorder) error {
 	return invokeCallbacks(cr, s, desiredObj, currentObj)
 }
 
@@ -676,7 +684,8 @@ func createArgs(version string) *args {
 	}
 	client := createClient(s, config)
 	mockController := mocks.MockController{}
-	r := createReconciler(client, s)
+	recorder := record.NewFakeRecorder(250)
+	r := createReconciler(client, s, recorder)
 	r.WithController(&mockController)
 
 	return &args{
@@ -685,6 +694,7 @@ func createArgs(version string) *args {
 		reconciler:     r,
 		version:        version,
 		mockController: &mockController,
+		recorder:       recorder,
 	}
 }
 
@@ -808,4 +818,35 @@ func getModifiedResource(args *args, modify modifyResource, tomodify isModifySub
 	}
 	//apply modify function on resource and return modified one
 	return modify(orig)
+}
+
+func validateEvents(recorder *record.FakeRecorder, match map[string]bool) {
+	events := recorder.Events
+	// Closing the channel allows me to do non blocking reads of the channel, once the channel runs out of items the loop exits.
+	close(events)
+	for event := range events {
+		val, ok := match[event]
+		Expect(ok).To(BeTrue(), "Event [%s] was not expected", event)
+		if !val {
+			match[event] = true
+		}
+	}
+	for k, v := range match {
+		Expect(v).To(BeTrue(), "Event [%s] not observed", k)
+	}
+}
+
+func createReadyEventValidationMap() map[string]bool {
+	match := createNotReadyEventValidationMap()
+	match["Normal DeployCompleted Deployment Completed"] = false
+	return match
+}
+
+func createNotReadyEventValidationMap() map[string]bool {
+	// match is map of strings and if we observed the event.
+	// We are not interested in the order of the events, just that the events happen at least once.
+	match := make(map[string]bool)
+	match["Normal DeployStarted Started Deployment"] = false
+	match[normalCreateSuccess+" *v1.Deployment "+testcr.OperatorDeploymentName] = false
+	return match
 }

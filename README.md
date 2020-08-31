@@ -42,7 +42,7 @@ type CallbackDispatcher interface {
 	AddCallback(runtime.Object, callbacks.ReconcileCallback)
 
 	// InvokeCallbacks executes callbacks for desired/current object type
-	InvokeCallbacks(l logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object) error
+	InvokeCallbacks(l logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object, recorder record.EventRecorder) error
 } 
 ``` 
 

@@ -3,14 +3,17 @@ package sdk_test
 import (
 	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk"
 	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	testcr "github.com/kubevirt/controller-lifecycle-operator-sdk/tests/cr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	v1 "github.com/openshift/custom-resource-status/conditions/v1"
 	v12 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 )
 
 var _ = Describe("CR status", func() {
+	var recorder = &record.FakeRecorder{}
 	DescribeTable("should be upgrading for", func(phase sdkapi.Phase, observedVersion, targetVersion string) {
 		crStatus := sdkapi.Status{TargetVersion: targetVersion, ObservedVersion: observedVersion, Phase: phase}
 
@@ -34,6 +37,7 @@ var _ = Describe("CR status", func() {
 	)
 
 	It("should be marked healthy", func() {
+		cr := testcr.Config{}
 		crStatus := sdkapi.Status{
 			Conditions: []v1.Condition{
 				{
@@ -53,7 +57,7 @@ var _ = Describe("CR status", func() {
 		reason := "TheReason"
 		message := "the message"
 
-		sdk.MarkCrHealthyMessage(&crStatus, reason, message)
+		sdk.MarkCrHealthyMessage(&cr, &crStatus, reason, message, recorder)
 
 		Expect(crStatus.Conditions).To(HaveLen(3))
 
@@ -70,6 +74,7 @@ var _ = Describe("CR status", func() {
 	})
 
 	It("should be marked upgrade healing degraded", func() {
+		cr := testcr.Config{}
 		crStatus := sdkapi.Status{
 			Conditions: []v1.Condition{
 				{
@@ -89,7 +94,7 @@ var _ = Describe("CR status", func() {
 		reason := "TheReason"
 		message := "the message"
 
-		sdk.MarkCrUpgradeHealingDegraded(&crStatus, reason, message)
+		sdk.MarkCrUpgradeHealingDegraded(&cr, &crStatus, reason, message, recorder)
 
 		Expect(crStatus.Conditions).To(HaveLen(3))
 
@@ -106,6 +111,7 @@ var _ = Describe("CR status", func() {
 	})
 
 	It("should be marked failed", func() {
+		cr := testcr.Config{}
 		crStatus := sdkapi.Status{
 			Conditions: []v1.Condition{
 				{
@@ -125,7 +131,7 @@ var _ = Describe("CR status", func() {
 		reason := "TheReason"
 		message := "the message"
 
-		sdk.MarkCrFailed(&crStatus, reason, message)
+		sdk.MarkCrFailed(&cr, &crStatus, reason, message, recorder)
 
 		Expect(crStatus.Conditions).To(HaveLen(3))
 
@@ -142,6 +148,7 @@ var _ = Describe("CR status", func() {
 	})
 
 	It("should be marked failed and healing", func() {
+		cr := testcr.Config{}
 		crStatus := sdkapi.Status{
 			Conditions: []v1.Condition{
 				{
@@ -161,7 +168,7 @@ var _ = Describe("CR status", func() {
 		reason := "TheReason"
 		message := "the message"
 
-		sdk.MarkCrFailedHealing(&crStatus, reason, message)
+		sdk.MarkCrFailedHealing(&cr, &crStatus, reason, message, recorder)
 
 		Expect(crStatus.Conditions).To(HaveLen(3))
 
@@ -178,11 +185,12 @@ var _ = Describe("CR status", func() {
 	})
 
 	It("should be marked deploying", func() {
+		cr := testcr.Config{}
 		crStatus := sdkapi.Status{}
 		reason := "TheReason"
 		message := "the message"
 
-		sdk.MarkCrDeploying(&crStatus, reason, message)
+		sdk.MarkCrDeploying(&cr, &crStatus, reason, message, recorder)
 
 		Expect(crStatus.Conditions).To(HaveLen(3))
 
