@@ -389,8 +389,16 @@ func (r *Reconciler) CheckForOrphans(logger logr.Logger, cr runtime.Object) (boo
 
 // CrUpdate sets given phase on the CR and updates it in the cluster
 func (r *Reconciler) CrUpdate(phase sdkapi.Phase, cr runtime.Object) error {
-	r.crManager.Status(cr).Phase = phase
-	return r.client.Update(context.TODO(), cr)
+	status := r.crManager.Status(cr)
+	status.Phase = phase
+	statusCopy := new(sdkapi.Status)
+	status.DeepCopyInto(statusCopy)
+	err := r.client.Update(context.TODO(), cr)
+	if err != nil {
+		return err
+	}
+	statusCopy.DeepCopyInto(status)
+	return r.client.Status().Update(context.TODO(), cr)
 }
 
 // CrSetVersion sets version and phase on the CR object
