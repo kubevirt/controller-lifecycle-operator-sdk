@@ -35,12 +35,15 @@ func (b *ResourceBuilder) WithOperatorLabels(labels map[string]string) map[strin
 
 // CreateOperatorDeployment creates deployment
 func (b *ResourceBuilder) CreateOperatorDeployment(name, namespace, matchKey, matchValue, serviceAccount string, numReplicas int32, podSpec corev1.PodSpec) *appsv1.Deployment {
-	return CreateDeployment(name, namespace, matchKey, matchValue, b.operatorLabels, numReplicas, podSpec, serviceAccount)
+	labels := WithLabels(map[string]string{matchKey: matchValue}, b.operatorLabels)
+	return CreateDeployment(name, namespace, labels, labels, numReplicas, podSpec, serviceAccount)
 }
 
 // CreateDeployment creates deployment
 func (b *ResourceBuilder) CreateDeployment(name, namespace, matchKey, matchValue, serviceAccount string, numReplicas int32, podSpec corev1.PodSpec) *appsv1.Deployment {
-	return CreateDeployment(name, namespace, matchKey, matchValue, b.commonLabels, numReplicas, podSpec, serviceAccount)
+	selectorMatchMap := map[string]string{matchKey: matchValue}
+	finalLabels := WithLabels(map[string]string{matchKey: matchValue}, b.commonLabels)
+	return CreateDeployment(name, namespace, selectorMatchMap, finalLabels, numReplicas, podSpec, serviceAccount)
 }
 
 // CreateContainer creates container
@@ -95,9 +98,7 @@ func CreateConfigMap(name string, labels map[string]string) *corev1.ConfigMap {
 }
 
 // CreateDeployment creates deployment
-func CreateDeployment(name, namespace, matchKey, matchValue string, labels map[string]string, numReplicas int32, podSpec corev1.PodSpec, serviceAccount string) *appsv1.Deployment {
-	matchMap := map[string]string{matchKey: matchValue}
-	finalLabels := WithLabels(matchMap, labels)
+func CreateDeployment(name string, namespace string, selectorMatchMap map[string]string, labels map[string]string, numReplicas int32, podSpec corev1.PodSpec, serviceAccount string) *appsv1.Deployment {
 	deployment := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apps/v1",
@@ -106,16 +107,16 @@ func CreateDeployment(name, namespace, matchKey, matchValue string, labels map[s
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels:    finalLabels,
+			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &numReplicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{matchKey: matchValue},
+				MatchLabels: selectorMatchMap,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: finalLabels,
+					Labels: labels,
 				},
 				Spec: podSpec,
 			},
