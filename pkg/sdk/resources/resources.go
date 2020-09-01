@@ -111,7 +111,7 @@ func CreateDeployment(name, namespace, matchKey, matchValue string, labels map[s
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &numReplicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: matchMap,
+				MatchLabels: map[string]string{matchKey: matchValue},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -141,7 +141,7 @@ func CreateService(name, matchKey, matchValue string, labels map[string]string) 
 			Labels: finalLabels,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: matchMap,
+			Selector: map[string]string{matchKey: matchValue},
 		},
 	}
 }
