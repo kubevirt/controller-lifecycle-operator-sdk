@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.com/kubevirt/controller-lifecycle-operator-sdk.svg?branch=master)](https://travis-ci.com/kubevirt/controller-lifecycle-operator-sdk)
 # controller-lifecycle-operator-sdk
 Library helping in building  HCO (Hyperconverged Cluster Operator - https://github.com/kubevirt/hyperconverged-cluster-operator) compatible Kubernetes operators.
 
