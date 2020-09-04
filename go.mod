@@ -13,13 +13,14 @@ require (
 	github.com/openshift/custom-resource-status v0.0.0-20200602122900-c002fd1547ca
 	github.com/prometheus/client_golang v1.1.0 // indirect
 	go.uber.org/multierr v1.3.0 // indirect
-	golang.org/x/tools v0.0.0-20200115044656-831fdb1e1868 // indirect
+	golang.org/x/tools v0.0.0-20200616195046-dc31b401abb5
 	k8s.io/api v0.18.6
 	k8s.io/apiextensions-apiserver v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v8.0.0+incompatible
 	k8s.io/kubernetes v1.14.0
 	sigs.k8s.io/controller-runtime v0.6.2
+	sigs.k8s.io/controller-tools v0.4.0
 )
 
 replace (

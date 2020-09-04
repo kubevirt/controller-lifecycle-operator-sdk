@@ -220,3 +220,15 @@ func SetLastAppliedConfiguration(obj metav1.Object, lastAppliedConfigAnnotation 
 
 	return nil
 }
+
+// GetOperatorToplevel returns the top level source directory of the operator.
+// Can be overridden using the environment variable "OPERATOR_DIR".
+func GetOperatorToplevel() string {
+	// When running unit tests, we pass the OPERATOR_DIR environment variable, because
+	// the tests run in their own directory and module.
+	cwd := os.Getenv("OPERATOR_DIR")
+	if cwd == "" {
+		cwd, _ = os.Getwd()
+	}
+	return cwd
+}

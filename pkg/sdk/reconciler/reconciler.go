@@ -115,7 +115,7 @@ type Reconciler struct {
 func (r *Reconciler) Reconcile(request reconcile.Request, operatorVersion string, reqLogger logr.Logger) (reconcile.Result, error) {
 	// Fetch the CR instance
 	// check at cluster level
-	cr, err := r.getCr(request.NamespacedName)
+	cr, err := r.GetCr(request.NamespacedName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -739,7 +739,7 @@ func (r *Reconciler) CrInit(cr controllerutil.Object, operatorVersion string) er
 	return r.CrUpdate(sdkapi.PhaseDeploying, cr)
 }
 
-func (r *Reconciler) getCr(name types.NamespacedName) (controllerutil.Object, error) {
+func (r *Reconciler) GetCr(name types.NamespacedName) (controllerutil.Object, error) {
 	cr := r.crManager.Create()
 	crKey := client.ObjectKey{Namespace: "", Name: name.Name}
 	err := r.client.Get(context.TODO(), crKey, cr)

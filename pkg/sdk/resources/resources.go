@@ -3,6 +3,8 @@ package resources
 import (
 	"fmt"
 
+	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,14 +38,14 @@ func (b *ResourceBuilder) WithOperatorLabels(labels map[string]string) map[strin
 // CreateOperatorDeployment creates deployment
 func (b *ResourceBuilder) CreateOperatorDeployment(name, namespace, matchKey, matchValue, serviceAccount string, numReplicas int32, podSpec corev1.PodSpec) *appsv1.Deployment {
 	labels := WithLabels(map[string]string{matchKey: matchValue}, b.operatorLabels)
-	return CreateDeployment(name, namespace, labels, labels, numReplicas, podSpec, serviceAccount)
+	return CreateDeployment(name, namespace, labels, labels, numReplicas, podSpec, serviceAccount, nil)
 }
 
 // CreateDeployment creates deployment
-func (b *ResourceBuilder) CreateDeployment(name, namespace, matchKey, matchValue, serviceAccount string, numReplicas int32, podSpec corev1.PodSpec) *appsv1.Deployment {
+func (b *ResourceBuilder) CreateDeployment(name, namespace, matchKey, matchValue, serviceAccount string, numReplicas int32, podSpec corev1.PodSpec, infraNodePlacement *sdkapi.NodePlacement) *appsv1.Deployment {
 	selectorMatchMap := map[string]string{matchKey: matchValue}
 	finalLabels := WithLabels(map[string]string{matchKey: matchValue}, b.commonLabels)
-	return CreateDeployment(name, namespace, selectorMatchMap, finalLabels, numReplicas, podSpec, serviceAccount)
+	return CreateDeployment(name, namespace, selectorMatchMap, finalLabels, numReplicas, podSpec, serviceAccount, infraNodePlacement)
 }
 
 // CreateContainer creates container
@@ -98,7 +100,7 @@ func CreateConfigMap(name string, labels map[string]string) *corev1.ConfigMap {
 }
 
 // CreateDeployment creates deployment
-func CreateDeployment(name string, namespace string, selectorMatchMap map[string]string, labels map[string]string, numReplicas int32, podSpec corev1.PodSpec, serviceAccount string) *appsv1.Deployment {
+func CreateDeployment(name string, namespace string, selectorMatchMap map[string]string, labels map[string]string, numReplicas int32, podSpec corev1.PodSpec, serviceAccount string, infraNodePlacement *sdkapi.NodePlacement) *appsv1.Deployment {
 	deployment := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apps/v1",
@@ -121,6 +123,11 @@ func CreateDeployment(name string, namespace string, selectorMatchMap map[string
 				Spec: podSpec,
 			},
 		},
+	}
+	if infraNodePlacement != nil {
+		deployment.Spec.Template.Spec.NodeSelector = infraNodePlacement.NodeSelector
+		deployment.Spec.Template.Spec.Tolerations = infraNodePlacement.Tolerations
+		deployment.Spec.Template.Spec.Affinity = &infraNodePlacement.Affinity
 	}
 	if serviceAccount != "" {
 		deployment.Spec.Template.Spec.ServiceAccountName = serviceAccount
