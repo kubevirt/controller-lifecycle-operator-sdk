@@ -56,4 +56,5 @@ type CallbackDispatcher interface {
 
 The `Reconciler` to work properly requires its client to provide an implementation of a `CrManager` interface. The interface defines several methods that are implementor domain-specific, like creation of a configuration Custom Resource, retrieval of `sdkapi.Status` sub-resource from the configuration CustomResource or others that can be found in [reconciler.go](pkg/sdk/reconciler/reconciler.go).
 
-                
+## Reference implementation
+[The reference implementation](examples/sample-operator) shows how the SDK can be used to manage other resources.                

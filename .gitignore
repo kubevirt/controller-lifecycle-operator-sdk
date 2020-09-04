@@ -12,3 +12,12 @@
 *.out
 
 .idea
+
+gen-k8s
+goimports
+goimports-check
+vet
+whitespace
+whitespace-check
+
+_output

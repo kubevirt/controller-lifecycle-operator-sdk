@@ -1,0 +1,6 @@
+apiVersion: sample.lifecycle.kubevirt.io/v1alpha1
+kind: SampleConfig
+metadata:
+  name: example-sampleconfig
+  namespace: kubevirt
+spec: {}
