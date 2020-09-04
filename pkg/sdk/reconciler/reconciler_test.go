@@ -521,7 +521,7 @@ var _ = Describe("Reconciler", func() {
 	},
 		Entry("verify - unused deployment deleted",
 			func() (runtime.Object, error) {
-				deployment := testcr.ResourceBuilder.CreateDeployment("fake-deployment", testcr.Namespace, "match-key", "match-value", "", int32(1), corev1.PodSpec{})
+				deployment := testcr.ResourceBuilder.CreateDeployment("fake-deployment", testcr.Namespace, "match-key", "match-value", "", int32(1), corev1.PodSpec{}, nil)
 				return deployment, nil
 			}),
 
