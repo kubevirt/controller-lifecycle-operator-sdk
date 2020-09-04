@@ -45,6 +45,7 @@ type Status struct {
 }
 
 // NodePlacement describes node scheduling configuration.
+// +k8s:openapi-gen=true
 type NodePlacement struct {
 	// nodeSelector is the node selector applied to the relevant kind of pods
 	// It specifies a map of key-value pairs: for the pod to be eligible to run on a node,
