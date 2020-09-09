@@ -21,3 +21,5 @@ whitespace
 whitespace-check
 
 _output
+_kubevirtci
+_out

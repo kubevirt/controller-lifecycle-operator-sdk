@@ -30,14 +30,6 @@ spec:
           type: object
         spec:
           description: SampleConfigSpec defines the desired state of SampleConfig
-          properties:
-            text:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "operator-sdk generate k8s" to regenerate code after
-                modifying this file Add custom validation using kubebuilder tags:
-                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-                Text to be used by the operator'
-              type: string
           type: object
         status:
           description: SampleConfigStatus defines the observed state of SampleConfig
@@ -178,10 +170,10 @@ spec:
       serviceAccountName: sample-operator
       containers:
         - name: sample-operator
-          image: quay.io/jdzon/sample-operator:v0.0.3
+          image: {{CONTAINER_PREFIX}}/{{OPERATOR_IMAGE}}:{{IMAGE_TAG}}
           command:
           - sample-operator
-          imagePullPolicy: Always
+          imagePullPolicy: {{IMAGE_PULL_POLICY}}
           env:
             - name: WATCH_NAMESPACE
             - name: POD_NAME
@@ -191,6 +183,6 @@ spec:
             - name: OPERATOR_NAME
               value: "sample-operator"
             - name: OPERATOR_VERSION
-              value: v0.0.3
+              value: {{IMAGE_TAG}}
             - name: SERVER_IMAGE
-              value: quay.io/jdzon/sample-http-server:v0.0.3
+              value: {{CONTAINER_PREFIX}}/{{SERVER_IMAGE}}:{{IMAGE_TAG}}

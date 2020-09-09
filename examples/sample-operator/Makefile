@@ -1,11 +1,15 @@
 all: fmt check
 
+VERSION ?= v0.0.3
+export VERSION := $(VERSION)
+
 # Image registry variables
 QUAY_USER ?= $(USER)
 IMAGE_REGISTRY ?= quay.io/$(QUAY_USER)
 IMAGE_TAG ?= latest
 OPERATOR_IMAGE ?= sample-operator
 HTTP_SERVER_IMAGE ?= sample-http-server
+DEPLOY_DIR ?= manifests
 
 TARGETS = \
 	gen-k8s \
@@ -45,7 +49,7 @@ whitespace: $(all_sources)
 	touch $@
 
 
-check: whitespace-check vet goimports-check test/unit
+check: whitespace-check vet goimports-check test-unit
 
 whitespace-check: $(all_sources)
 	./hack/whitespace.sh
@@ -63,10 +67,16 @@ $(OPERATOR_SDK): go.mod
 
 gen-k8s: $(OPERATOR_SDK) $(apis_sources)
 	$(OPERATOR_SDK) generate k8s
+	GOFLAGS=-mod= ./hack/update-codegen.sh
 	touch $@
 
-test/unit: $(GINKGO) $(KUBEBUILDER_DIR)
+test-unit: $(GINKGO) $(KUBEBUILDER_DIR)
 	$(GINKGO) $(GINKGO_ARGS) ./pkg/ ./cmd/
+
+test-functional:
+	automation/test.sh
+
+test: test-unit test-functional
 
 operator-build:
 	docker build -f build/operator/Dockerfile -t $(IMAGE_REGISTRY)/$(OPERATOR_IMAGE):$(IMAGE_TAG) .
@@ -92,11 +102,37 @@ vet: $(cmd_sources) $(pkg_sources)
 	go vet ./pkg/... ./cmd/...
 	touch $@
 
+gen-manifests:
+	DEPLOY_DIR=$(DEPLOY_DIR) \
+	CONTAINER_PREFIX=$(IMAGE_REGISTRY) \
+	IMAGE_TAG=$(IMAGE_TAG) \
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	SERVER_IMAGE=$(HTTP_SERVER_IMAGE) \
+		./hack/generate-manifests.sh
+
+cluster-up:
+	./cluster/up.sh
+
+cluster-down:
+	./cluster/down.sh
+
+cluster-sync: cluster-operator-push cluster-operator-install
+
+cluster-operator-push:
+	./cluster/operator-push.sh
+
+cluster-operator-install:
+	./cluster/operator-install.sh
+
+cluster-clean:
+	./cluster/clean.sh
+
 .PHONY: \
 	all \
 	check \
 	docker-build \
 	docker-push \
-	test/unit \
+	test-unit \
+	test-functional \
 	gen-k8s \
 	vendor
