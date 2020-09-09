@@ -1,0 +1,1 @@
+# Don't remove. This file is necesary for the operator-sdk generate command
