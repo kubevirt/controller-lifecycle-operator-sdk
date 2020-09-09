@@ -13,10 +13,12 @@ import (
 )
 
 const (
-	httpServerDeploymentName = "http-server-deployment"
-	httpServerName           = "http-server"
-	deploymentMatchKey       = "sample-operator.kubevirt.io"
-	httpServerPort           = 8081
+	// HttpServerDeploymentName defines the name of the HTTP server deployment
+	HttpServerDeploymentName = "http-server"
+	// HttpServerName defines the name of the HTTP server service
+	HttpServerName     = "http-server"
+	deploymentMatchKey = "sample-operator.kubevirt.io"
+	httpServerPort     = 8081
 )
 
 const (
@@ -30,7 +32,7 @@ var (
 	resourceBuilder = resources.NewResourceBuilder(commonLabels, operatorLabels)
 )
 
-// SampleConfigCrManager provides test CR management functionality
+// CrManager provides test CR management functionality
 type CrManager struct {
 	operatorArgs *OperatorArgs
 }
@@ -52,16 +54,16 @@ func (m *CrManager) Status(cr runtime.Object) *sdkapi.Status {
 }
 
 // GetAllResources provides all resources managed by the cr
-func (m *CrManager) GetAllResources(cr runtime.Object) ([]runtime.Object, error) {
+func (m *CrManager) GetAllResources(_ runtime.Object) ([]runtime.Object, error) {
 	namespace := m.operatorArgs.Namespace
 
-	serviceAccount := resourceBuilder.CreateServiceAccount(httpServerName)
+	serviceAccount := resourceBuilder.CreateServiceAccount(HttpServerName)
 	serviceAccount.Namespace = namespace
 
-	role := resourceBuilder.CreateRole(httpServerName, []rbacv1.PolicyRule{})
+	role := resourceBuilder.CreateRole(HttpServerName, []rbacv1.PolicyRule{})
 	role.Namespace = namespace
 
-	roleBinding := resourceBuilder.CreateRoleBinding(httpServerName, httpServerName, httpServerName, namespace)
+	roleBinding := resourceBuilder.CreateRoleBinding(HttpServerName, HttpServerName, HttpServerName, namespace)
 	roleBinding.Namespace = namespace
 
 	httpDeployment := m.createHTTPServerDeployment()
@@ -77,10 +79,11 @@ func (m *CrManager) GetAllResources(cr runtime.Object) ([]runtime.Object, error)
 }
 
 func (m *CrManager) createHTTPServerService() *v1.Service {
-	httpService := resourceBuilder.CreateService(httpServerName, deploymentMatchKey, httpServerName, nil)
+	httpService := resourceBuilder.CreateService(HttpServerName, deploymentMatchKey, HttpServerName, nil)
 	httpService.Namespace = m.operatorArgs.Namespace
+	httpService.Spec.Type = v1.ServiceTypeNodePort
 	httpService.Spec.Ports = []v1.ServicePort{
-		{Port: httpServerPort, Name: "http", Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: httpServerPort}},
+		{Port: httpServerPort, Name: "http", Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: httpServerPort}, NodePort: 30080},
 	}
 	return httpService
 }
@@ -99,7 +102,7 @@ func (m *CrManager) createHTTPServerDeployment() *appsv1.Deployment {
 			*container,
 		},
 	}
-	return resourceBuilder.CreateOperatorDeployment(httpServerDeploymentName, m.operatorArgs.Namespace, deploymentMatchKey, httpServerName, httpServerName, 1, podSpec)
+	return resourceBuilder.CreateOperatorDeployment(HttpServerDeploymentName, m.operatorArgs.Namespace, deploymentMatchKey, HttpServerName, HttpServerName, 1, podSpec)
 }
 
 // GetDependantResourcesListObjects returns resource list objects of dependant resources

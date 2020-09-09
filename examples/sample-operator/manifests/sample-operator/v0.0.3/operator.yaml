@@ -1,0 +1,188 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: sampleconfigs.sample.lifecycle.kubevirt.io
+spec:
+  group: sample.lifecycle.kubevirt.io
+  names:
+    kind: SampleConfig
+    listKind: SampleConfigList
+    plural: sampleconfigs
+    singular: sampleconfig
+  scope: Cluster
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: SampleConfig is the Schema for the sampleconfigs API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: SampleConfigSpec defines the desired state of SampleConfig
+          type: object
+        status:
+          description: SampleConfigStatus defines the observed state of SampleConfig
+          properties:
+            conditions:
+              description: A list of current conditions of the resource
+              items:
+                description: Condition represents the state of the operator's reconciliation
+                  functionality.
+                properties:
+                  lastHeartbeatTime:
+                    format: date-time
+                    type: string
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    description: ConditionType is the state of the operator's reconciliation
+                      functionality.
+                    type: string
+                required:
+                  - status
+                  - type
+                type: object
+              type: array
+            observedVersion:
+              description: The observed version of the resource
+              type: string
+            operatorVersion:
+              description: The version of the resource as defined by the operator
+              type: string
+            phase:
+              description: Phase is the current phase of the deployment
+              type: string
+            targetVersion:
+              description: The desired version of the resource
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubevirt
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sample-operator
+  namespace: kubevirt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: sample-operator
+rules:
+  - apiGroups:
+      - sample.lifecycle.kubevirt.io
+    resources:
+      - sampleconfigs
+      - sampleconfigs/finalizers
+      - sampleconfigs/status
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - events
+      - configmaps
+      - secrets
+      - serviceaccounts
+      - services
+    verbs:
+      - '*'
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+      - deployments
+      - deployments/finalizers
+    verbs:
+      - '*'
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - '*'
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - rolebindings
+      - roles
+    verbs:
+      - '*'
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: sample-operator
+subjects:
+  - kind: ServiceAccount
+    name: sample-operator
+    namespace: kubevirt
+roleRef:
+  kind: ClusterRole
+  name: sample-operator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-operator
+  namespace: kubevirt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: sample-operator
+  template:
+    metadata:
+      labels:
+        name: sample-operator
+    spec:
+      serviceAccountName: sample-operator
+      containers:
+        - name: sample-operator
+          image: quay.io/jdzon/sample-operator:v0.0.3
+          command:
+          - sample-operator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "sample-operator"
+            - name: OPERATOR_VERSION
+              value: v0.0.3
+            - name: SERVER_IMAGE
+              value: quay.io/jdzon/sample-http-server:v0.0.3

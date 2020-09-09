@@ -1,21 +1,23 @@
 # Operator reference implementation
 
  `sample-operator` controls deployment of a simple, not customized nginx HTTP server.
- 
+
  ## Deployment
  `sample-operator` is deployed in `kubevirt` namespace and deployment manifests will create it, if it's not present.
- 
+
  To deploy the operator execute following command:
  ```shell script
-kubectl apply -f deploy/operator.yaml
+kubectl apply -f manifests/v0.0.3/operator.yaml
 ```
 
 Deployment of the HTTP server is controlled by the presence of a `sampleconfig` CR; to deploy it, execute:
 ```shell script
-kubectl apply -f deploy/crd/sampleconfig_types.go
+kubectl apply -f manifests/v0.0.3/sampleconfig_types.go
 ```
 
-The HTTP service listens on port 8081, which can be forwarded locally:
+The HTTP service listens on port `8081`, which in turn is exposed as a node port `30080`.
+
+In case of deployments like CRC or kubevirtci, port forwarding might be required:
 ```shell script
 kubectl -n kubevirt port-forward service/http-server 8081:8081
 ```
