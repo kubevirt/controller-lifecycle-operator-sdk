@@ -132,7 +132,7 @@ var _ = Describe("Operator lifecycle test ", func() {
 
 		By("Confirming that the HTTP server deployment is gone")
 		Eventually(func() error {
-			_, err := deployments.Get(context.TODO(), sampleconfig.HttpServerDeploymentName, v1meta.GetOptions{})
+			_, err := deployments.Get(context.TODO(), sampleconfig.HTTPServerDeploymentName, v1meta.GetOptions{})
 			return err
 		}, 2*time.Minute, time.Second).Should(
 			And(
@@ -147,7 +147,7 @@ var _ = Describe("Operator lifecycle test ", func() {
 
 func assertHTTPServerAvailable(f *fwk.Framework) bool {
 	return Eventually(func() (int32, error) {
-		httpDeployment, err := f.K8sClient.AppsV1().Deployments(f.OperatorInstallNamespace).Get(context.TODO(), sampleconfig.HttpServerDeploymentName, v1meta.GetOptions{})
+		httpDeployment, err := f.K8sClient.AppsV1().Deployments(f.OperatorInstallNamespace).Get(context.TODO(), sampleconfig.HTTPServerDeploymentName, v1meta.GetOptions{})
 		if err != nil {
 			return 0, err
 		}

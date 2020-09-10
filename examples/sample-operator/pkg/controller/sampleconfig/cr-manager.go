@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	// HttpServerDeploymentName defines the name of the HTTP server deployment
-	HttpServerDeploymentName = "http-server"
-	// HttpServerName defines the name of the HTTP server service
-	HttpServerName     = "http-server"
+	// HTTPServerDeploymentName defines the name of the HTTP server deployment
+	HTTPServerDeploymentName = "http-server"
+	// HTTPServerName defines the name of the HTTP server service
+	HTTPServerName     = "http-server"
 	deploymentMatchKey = "sample-operator.kubevirt.io"
 	httpServerPort     = 8081
 )
@@ -57,13 +57,13 @@ func (m *CrManager) Status(cr runtime.Object) *sdkapi.Status {
 func (m *CrManager) GetAllResources(_ runtime.Object) ([]runtime.Object, error) {
 	namespace := m.operatorArgs.Namespace
 
-	serviceAccount := resourceBuilder.CreateServiceAccount(HttpServerName)
+	serviceAccount := resourceBuilder.CreateServiceAccount(HTTPServerName)
 	serviceAccount.Namespace = namespace
 
-	role := resourceBuilder.CreateRole(HttpServerName, []rbacv1.PolicyRule{})
+	role := resourceBuilder.CreateRole(HTTPServerName, []rbacv1.PolicyRule{})
 	role.Namespace = namespace
 
-	roleBinding := resourceBuilder.CreateRoleBinding(HttpServerName, HttpServerName, HttpServerName, namespace)
+	roleBinding := resourceBuilder.CreateRoleBinding(HTTPServerName, HTTPServerName, HTTPServerName, namespace)
 	roleBinding.Namespace = namespace
 
 	httpDeployment := m.createHTTPServerDeployment()
@@ -79,7 +79,7 @@ func (m *CrManager) GetAllResources(_ runtime.Object) ([]runtime.Object, error) 
 }
 
 func (m *CrManager) createHTTPServerService() *v1.Service {
-	httpService := resourceBuilder.CreateService(HttpServerName, deploymentMatchKey, HttpServerName, nil)
+	httpService := resourceBuilder.CreateService(HTTPServerName, deploymentMatchKey, HTTPServerName, nil)
 	httpService.Namespace = m.operatorArgs.Namespace
 	httpService.Spec.Type = v1.ServiceTypeNodePort
 	httpService.Spec.Ports = []v1.ServicePort{
@@ -102,7 +102,7 @@ func (m *CrManager) createHTTPServerDeployment() *appsv1.Deployment {
 			*container,
 		},
 	}
-	return resourceBuilder.CreateOperatorDeployment(HttpServerDeploymentName, m.operatorArgs.Namespace, deploymentMatchKey, HttpServerName, HttpServerName, 1, podSpec)
+	return resourceBuilder.CreateOperatorDeployment(HTTPServerDeploymentName, m.operatorArgs.Namespace, deploymentMatchKey, HTTPServerName, HTTPServerName, 1, podSpec)
 }
 
 // GetDependantResourcesListObjects returns resource list objects of dependant resources
