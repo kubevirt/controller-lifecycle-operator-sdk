@@ -28,3 +28,5 @@ if [[ "$KUBEVIRT_PROVIDER" =~ (ocp|okd)- ]]; then
     ./cluster/kubectl.sh delete ns openshift-marketplace --wait=false
     ./cluster/kubectl.sh delete ns openshift-cluster-samples-operator --wait=false
 fi
+
+ensure_golang
