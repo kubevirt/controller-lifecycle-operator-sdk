@@ -5,8 +5,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
-	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

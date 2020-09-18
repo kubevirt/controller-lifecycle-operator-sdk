@@ -12,9 +12,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis"
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller"
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/version"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"

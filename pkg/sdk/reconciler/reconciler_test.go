@@ -16,15 +16,11 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/tests/mocks"
+	"kubevirt.io/controller-lifecycle-operator-sdk/tests/mocks"
 
 	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/go-logr/logr"
-	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
-	testcr "github.com/kubevirt/controller-lifecycle-operator-sdk/tests/cr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -33,6 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
+	testcr "kubevirt.io/controller-lifecycle-operator-sdk/tests/cr"
 	realClient "sigs.k8s.io/controller-runtime/pkg/client"
 	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"

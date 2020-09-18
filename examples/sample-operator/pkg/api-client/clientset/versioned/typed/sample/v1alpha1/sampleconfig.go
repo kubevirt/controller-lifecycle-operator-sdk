@@ -21,12 +21,12 @@ import (
 	"context"
 	"time"
 
-	scheme "github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned/scheme"
-	v1alpha1 "github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
+	scheme "kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned/scheme"
+	v1alpha1 "kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
 )
 
 // SampleConfigsGetter has a method to return a SampleConfigInterface.

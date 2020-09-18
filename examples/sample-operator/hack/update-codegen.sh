@@ -29,7 +29,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 bash "${CODEGEN_PKG}"/generate-groups.sh client+ \
-  github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis \
+  kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis \
   sample:v1alpha1 \
   --fake-clientset=false \
   --output-base "$SCRIPT_ROOT/../../../../../" \

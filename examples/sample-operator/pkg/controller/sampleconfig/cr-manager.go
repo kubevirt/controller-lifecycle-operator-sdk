@@ -1,14 +1,14 @@
 package sampleconfig
 
 import (
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
-	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/resources"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 

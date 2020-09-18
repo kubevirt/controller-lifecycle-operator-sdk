@@ -1,10 +1,10 @@
 package crdgenerator
 
 import (
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk"
 	"golang.org/x/tools/go/packages"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk"
 	"sigs.k8s.io/controller-tools/pkg/loader"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 

@@ -1,11 +1,11 @@
 package sampleconfig_test
 
 import (
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller/sampleconfig"
-	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller/sampleconfig"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 )
 
 var _ = Describe("Controller CR manager", func() {

@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned"
 
 	"github.com/onsi/ginkgo"
 	"github.com/pkg/errors"
@@ -27,7 +27,7 @@ var (
 )
 
 // Framework supports common operations used by functional/e2e tests.
-// This package is based on https://github.com/kubevirt/containerized-data-importer/blob/master/tests/framework/framework.go
+// This package is based on https://kubevirt.io/containerized-data-importer/blob/master/tests/framework/framework.go
 type Framework struct {
 	// NsPrefix is a prefix for generated namespace
 	NsPrefix string

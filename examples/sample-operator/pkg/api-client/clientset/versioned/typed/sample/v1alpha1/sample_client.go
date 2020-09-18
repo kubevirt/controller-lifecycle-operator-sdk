@@ -18,9 +18,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned/scheme"
-	v1alpha1 "github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
 	rest "k8s.io/client-go/rest"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned/scheme"
+	v1alpha1 "kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
 )
 
 type SampleV1alpha1Interface interface {
