@@ -4,16 +4,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller/sampleconfig"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller/sampleconfig"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 
-	fwk "github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/tests/framework"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fwk "kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/tests/framework"
 )
 
 const sampleConfigName = "example-sampleconfig"

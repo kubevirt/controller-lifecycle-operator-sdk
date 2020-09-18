@@ -3,14 +3,14 @@ package sampleconfig
 import (
 	"fmt"
 
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
 	"kubevirt.io/client-go/util"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
 
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
 
 	"github.com/kelseyhightower/envconfig"
-	samplev1alpha1 "github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
+	samplev1alpha1 "kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"

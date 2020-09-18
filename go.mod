@@ -1,4 +1,4 @@
-module github.com/kubevirt/controller-lifecycle-operator-sdk
+module kubevirt.io/controller-lifecycle-operator-sdk
 
 go 1.14
 

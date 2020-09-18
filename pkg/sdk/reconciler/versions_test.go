@@ -1,10 +1,10 @@
 package reconciler_test
 
 import (
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
 )
 
 var _ = Describe("Version upgrade", func() {

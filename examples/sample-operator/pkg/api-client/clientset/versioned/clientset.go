@@ -20,10 +20,10 @@ package versioned
 import (
 	"fmt"
 
-	samplev1alpha1 "github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned/typed/sample/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
+	samplev1alpha1 "kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/api-client/clientset/versioned/typed/sample/v1alpha1"
 )
 
 type Interface interface {

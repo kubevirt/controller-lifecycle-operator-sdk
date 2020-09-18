@@ -1,12 +1,12 @@
 package v1beta1
 
 import (
-	sdkapi "github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/api"
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/pkg/sdk/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/resources"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/kubevirt/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller/sampleconfig"
+	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller/sampleconfig"
 )
 
 func init() {
