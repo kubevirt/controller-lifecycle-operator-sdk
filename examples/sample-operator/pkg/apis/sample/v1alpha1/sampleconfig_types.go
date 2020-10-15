@@ -7,6 +7,9 @@ import (
 
 // SampleConfigSpec defines the desired state of SampleConfig
 type SampleConfigSpec struct {
+	// Rules on which nodes controller pod(s) will be scheduled
+	// +optional
+	Infra sdkapi.NodePlacement `json:"infra,omitempty"`
 }
 
 // SampleConfigStatus defines the observed state of SampleConfig

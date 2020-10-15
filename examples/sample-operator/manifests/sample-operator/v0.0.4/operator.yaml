@@ -848,10 +848,10 @@ spec:
       serviceAccountName: sample-operator
       containers:
         - name: sample-operator
-          image: {{CONTAINER_PREFIX}}/{{OPERATOR_IMAGE}}:{{IMAGE_TAG}}
+          image: quay.io/jdzon/sample-operator:v0.0.4
           command:
           - sample-operator
-          imagePullPolicy: {{IMAGE_PULL_POLICY}}
+          imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
             - name: POD_NAME
@@ -861,6 +861,6 @@ spec:
             - name: OPERATOR_NAME
               value: "sample-operator"
             - name: OPERATOR_VERSION
-              value: {{IMAGE_TAG}}
+              value: v0.0.4
             - name: SERVER_IMAGE
-              value: {{CONTAINER_PREFIX}}/{{SERVER_IMAGE}}:{{IMAGE_TAG}}
+              value: quay.io/jdzon/sample-http-server:v0.0.4
