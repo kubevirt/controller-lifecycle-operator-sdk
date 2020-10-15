@@ -95,9 +95,9 @@ var _ = Describe("Operator lifecycle test ", func() {
 		Expect(operatorDeployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 
 		By("checking pre-existing version")
-		expectedUpgradedVersion := "v0.0.3"
+		expectedUpgradedVersion := "v0.0.4"
 		Expect(operatorDeployment.Spec.Template.Spec.Containers[0].Image).ToNot(ContainSubstring(expectedUpgradedVersion))
-		operatorDeployment.Spec.Template.Spec.Containers[0].Image = "quay.io/jdzon/sample-operator:v0.0.3"
+		operatorDeployment.Spec.Template.Spec.Containers[0].Image = "quay.io/jdzon/sample-operator:v0.0.4"
 		env := operatorDeployment.Spec.Template.Spec.Containers[0].Env
 		for i := range env {
 			switch env[i].Name {
@@ -106,7 +106,7 @@ var _ = Describe("Operator lifecycle test ", func() {
 				env[i].Value = expectedUpgradedVersion
 			case "SERVER_IMAGE":
 				Expect(env[i].Value).ToNot(ContainSubstring(expectedUpgradedVersion))
-				env[i].Value = "quay.io/jdzon/sample-http-server:v0.0.3"
+				env[i].Value = "quay.io/jdzon/sample-http-server:v0.0.4"
 			}
 		}
 		By("updating versions on the deployment")

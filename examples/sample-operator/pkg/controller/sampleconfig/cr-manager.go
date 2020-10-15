@@ -54,7 +54,7 @@ func (m *CrManager) Status(cr runtime.Object) *sdkapi.Status {
 }
 
 // GetAllResources provides all resources managed by the cr
-func (m *CrManager) GetAllResources(_ runtime.Object) ([]runtime.Object, error) {
+func (m *CrManager) GetAllResources(obj runtime.Object) ([]runtime.Object, error) {
 	namespace := m.operatorArgs.Namespace
 
 	serviceAccount := resourceBuilder.CreateServiceAccount(HTTPServerName)
@@ -66,7 +66,8 @@ func (m *CrManager) GetAllResources(_ runtime.Object) ([]runtime.Object, error) 
 	roleBinding := resourceBuilder.CreateRoleBinding(HTTPServerName, HTTPServerName, HTTPServerName, namespace)
 	roleBinding.Namespace = namespace
 
-	httpDeployment := m.createHTTPServerDeployment()
+	cr := obj.(*v1alpha1.SampleConfig)
+	httpDeployment := m.createHTTPServerDeployment(&cr.Spec.Infra)
 	httpService := m.createHTTPServerService()
 
 	return []runtime.Object{
@@ -88,7 +89,7 @@ func (m *CrManager) createHTTPServerService() *v1.Service {
 	return httpService
 }
 
-func (m *CrManager) createHTTPServerDeployment() *appsv1.Deployment {
+func (m *CrManager) createHTTPServerDeployment(placement *sdkapi.NodePlacement) *appsv1.Deployment {
 	ports := []v1.ContainerPort{
 		{
 			Name:          "http",
@@ -102,7 +103,7 @@ func (m *CrManager) createHTTPServerDeployment() *appsv1.Deployment {
 			*container,
 		},
 	}
-	return resourceBuilder.CreateOperatorDeployment(HTTPServerDeploymentName, m.operatorArgs.Namespace, deploymentMatchKey, HTTPServerName, HTTPServerName, 1, podSpec)
+	return resourceBuilder.CreateDeployment(HTTPServerDeploymentName, m.operatorArgs.Namespace, deploymentMatchKey, HTTPServerName, HTTPServerName, 1, podSpec, placement)
 }
 
 // GetDependantResourcesListObjects returns resource list objects of dependant resources
