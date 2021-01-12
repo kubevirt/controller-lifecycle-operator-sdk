@@ -17,17 +17,9 @@ require (
 	k8s.io/api v0.18.6
 	k8s.io/apiextensions-apiserver v0.18.6
 	k8s.io/apimachinery v0.18.6
-	k8s.io/client-go v8.0.0+incompatible
-	k8s.io/kubernetes v1.14.0
+	k8s.io/client-go v0.18.6
 	sigs.k8s.io/controller-runtime v0.6.2
 	sigs.k8s.io/controller-tools v0.4.0
 )
 
-replace (
-	k8s.io/api => k8s.io/api v0.18.6
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.6
-	k8s.io/apimachinery => k8s.io/apimachinery v0.18.6
-	k8s.io/client-go => k8s.io/client-go v0.18.6
-
-	sigs.k8s.io/structured-merge-diff => sigs.k8s.io/structured-merge-diff v1.0.0
-)
+replace sigs.k8s.io/structured-merge-diff => sigs.k8s.io/structured-merge-diff v1.0.0
