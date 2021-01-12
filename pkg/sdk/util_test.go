@@ -19,19 +19,14 @@ package sdk
 import (
 	"reflect"
 
-	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	v1 "k8s.io/api/apps/v1"
-
-	"k8s.io/kubernetes/pkg/apis/core"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const lastsAppliedConfigurationAnnotation = "lastAppliedConfiguration"
@@ -148,7 +143,7 @@ var _ = Describe("MergeLabelsAndAnnotations", func() {
 
 var _ = Describe("StripStatusFromObject", func() {
 	It("Should not alter object without status", func() {
-		in := &core.PodList{}
+		in := &corev1.PodList{}
 		out, err := StripStatusFromObject(in.DeepCopyObject())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reflect.DeepEqual(out, in)).To(BeTrue())
@@ -162,31 +157,31 @@ var _ = Describe("StripStatusFromObject", func() {
 		Expect(reflect.DeepEqual(out, expected)).To(BeTrue())
 	},
 		Entry("status@Deployment",
-			&v1.Deployment{
-				Status: v1.DeploymentStatus{
+			&appsv1.Deployment{
+				Status: appsv1.DeploymentStatus{
 					Replicas: 128,
 				},
 			},
-			&v1.Deployment{Status: v1.DeploymentStatus{}},
+			&appsv1.Deployment{Status: appsv1.DeploymentStatus{}},
 		),
 		Entry("Status@Pod",
-			&core.Pod{
-				Status: core.PodStatus{
+			&corev1.Pod{
+				Status: corev1.PodStatus{
 					PodIP: "pod-ip",
 				},
 			},
-			&core.Pod{Status: core.PodStatus{}},
+			&corev1.Pod{Status: corev1.PodStatus{}},
 		),
 	)
 
 	It("Should strip object status", func() {
-		in := &v1.Deployment{
-			Status: v1.DeploymentStatus{
+		in := &appsv1.Deployment{
+			Status: appsv1.DeploymentStatus{
 				Replicas: 128,
 			},
 		}
-		expected := &v1.Deployment{
-			Status: v1.DeploymentStatus{},
+		expected := &appsv1.Deployment{
+			Status: appsv1.DeploymentStatus{},
 		}
 		out, err := StripStatusFromObject(in.DeepCopyObject())
 		Expect(err).ToNot(HaveOccurred())

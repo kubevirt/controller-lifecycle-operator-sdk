@@ -19,7 +19,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.6.2
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.18.2 // Required by prometheus-operator
+replace k8s.io/client-go => k8s.io/client-go v0.18.6
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by O
 
