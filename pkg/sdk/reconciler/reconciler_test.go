@@ -6,50 +6,46 @@ import (
 	"reflect"
 	"time"
 
-	"k8s.io/client-go/tools/record"
-
-	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	corev1 "k8s.io/api/core/v1"
-
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"kubevirt.io/controller-lifecycle-operator-sdk/tests/mocks"
-
-	appsv1 "k8s.io/api/apps/v1"
-
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
+	"github.com/go-logr/logr"
 	v1 "github.com/openshift/custom-resource-status/conditions/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
 	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
 	testcr "kubevirt.io/controller-lifecycle-operator-sdk/tests/cr"
-	realClient "sigs.k8s.io/controller-runtime/pkg/client"
-	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"kubevirt.io/controller-lifecycle-operator-sdk/tests/mocks"
 )
 
-type modifyResource func(toModify runtime.Object) (runtime.Object, runtime.Object, error)
-type isModifySubject func(resource runtime.Object) bool
-type isUpgraded func(postUpgradeObj runtime.Object, deisredObj runtime.Object) bool
-type createUnusedObject func() (runtime.Object, error)
+type modifyResource func(toModify client.Object) (client.Object, client.Object, error)
+type isModifySubject func(resource client.Object) bool
+type isUpgraded func(postUpgradeObj client.Object, deisredObj client.Object) bool
+type createUnusedObject func() (client.Object, error)
 
 type mockCallbackDispatcher struct {
 }
 
 type args struct {
 	config         *testcr.Config
-	client         realClient.Client
+	client         client.Client
 	reconciler     *reconciler.Reconciler
 	version        string
 	mockController *mocks.MockController
@@ -68,17 +64,17 @@ var log = logf.Log.WithName("tests")
 
 var callbackDispatcher = &mockCallbackDispatcher{}
 var (
-	invokeCallbacks func(interface{}, callbacks.ReconcileState, runtime.Object, runtime.Object) error
-	addCallback     func(runtime.Object, callbacks.ReconcileCallback)
+	invokeCallbacks func(interface{}, callbacks.ReconcileState, client.Object, client.Object) error
+	addCallback     func(client.Object, callbacks.ReconcileCallback)
 )
 
 var _ = Describe("Reconciler", func() {
 
 	BeforeEach(func() {
-		invokeCallbacks = func(interface{}, callbacks.ReconcileState, runtime.Object, runtime.Object) error {
+		invokeCallbacks = func(interface{}, callbacks.ReconcileState, client.Object, client.Object) error {
 			return nil
 		}
-		addCallback = func(runtime.Object, callbacks.ReconcileCallback) {}
+		addCallback = func(client.Object, callbacks.ReconcileCallback) {}
 	})
 
 	Describe("exported methods", func() {
@@ -338,7 +334,7 @@ var _ = Describe("Reconciler", func() {
 		Expect(upgraded(storedObj, oOriginal)).Should(Equal(true))
 	},
 		Entry("verify - deployment updated on upgrade - deployment spec changed - modify container",
-			func(toModify runtime.Object) (runtime.Object, runtime.Object, error) { //Modify
+			func(toModify client.Object) (client.Object, client.Object, error) { //Modify
 				deploymentOrig, ok := toModify.(*appsv1.Deployment)
 				if !ok {
 					return toModify, toModify, fmt.Errorf("wrong type")
@@ -359,7 +355,7 @@ var _ = Describe("Reconciler", func() {
 
 				return toModify, deployment, nil
 			},
-			func(resource runtime.Object) bool { //find resource for test
+			func(resource client.Object) bool { //find resource for test
 				deployment, ok := resource.(*appsv1.Deployment)
 				if !ok {
 					return false
@@ -369,7 +365,7 @@ var _ = Describe("Reconciler", func() {
 				}
 				return false
 			},
-			func(postUpgradeObj runtime.Object, deisredObj runtime.Object) bool { //check resource was upgraded
+			func(postUpgradeObj client.Object, deisredObj client.Object) bool { //check resource was upgraded
 				postDep, ok := postUpgradeObj.(*appsv1.Deployment)
 				if !ok {
 					return false
@@ -389,7 +385,7 @@ var _ = Describe("Reconciler", func() {
 				return len(desiredDep.Spec.Template.Spec.Containers[0].Env) == len(postDep.Spec.Template.Spec.Containers[0].Env)
 			}),
 		Entry("verify - deployment updated on upgrade - deployment spec changed - add new container",
-			func(toModify runtime.Object) (runtime.Object, runtime.Object, error) { //Modify
+			func(toModify client.Object) (client.Object, client.Object, error) { //Modify
 				deploymentOrig, ok := toModify.(*appsv1.Deployment)
 				if !ok {
 					return toModify, toModify, fmt.Errorf("wrong type")
@@ -407,14 +403,14 @@ var _ = Describe("Reconciler", func() {
 				deployment.Spec.Template.Spec.Containers = containers
 				return toModify, deployment, nil
 			},
-			func(resource runtime.Object) bool { //find resource for test
+			func(resource client.Object) bool { //find resource for test
 				deployment, ok := resource.(*appsv1.Deployment)
 				if !ok {
 					return false
 				}
 				return deployment.Name == testcr.OperatorDeploymentName
 			},
-			func(postUpgradeObj runtime.Object, deisredObj runtime.Object) bool { //check resource was upgraded
+			func(postUpgradeObj client.Object, deisredObj client.Object) bool { //check resource was upgraded
 				postDep, ok := postUpgradeObj.(*appsv1.Deployment)
 				if !ok {
 					return false
@@ -434,7 +430,7 @@ var _ = Describe("Reconciler", func() {
 				return len(desiredDep.Spec.Template.Spec.Containers) == len(postDep.Spec.Template.Spec.Containers)
 			}),
 		Entry("verify - deployment updated on upgrade - deployment spec changed - remove existing container",
-			func(toModify runtime.Object) (runtime.Object, runtime.Object, error) { //Modify
+			func(toModify client.Object) (client.Object, client.Object, error) { //Modify
 				deploymentOrig, ok := toModify.(*appsv1.Deployment)
 				if !ok {
 					return toModify, toModify, fmt.Errorf("wrong type")
@@ -445,7 +441,7 @@ var _ = Describe("Reconciler", func() {
 
 				return toModify, deployment, nil
 			},
-			func(resource runtime.Object) bool { //find resource for test
+			func(resource client.Object) bool { //find resource for test
 				deployment, ok := resource.(*appsv1.Deployment)
 				if !ok {
 					return false
@@ -455,7 +451,7 @@ var _ = Describe("Reconciler", func() {
 				}
 				return false
 			},
-			func(postUpgradeObj runtime.Object, deisredObj runtime.Object) bool { //check resource was upgraded
+			func(postUpgradeObj client.Object, deisredObj client.Object) bool { //check resource was upgraded
 				postDep, ok := postUpgradeObj.(*appsv1.Deployment)
 				if !ok {
 					return false
@@ -520,13 +516,13 @@ var _ = Describe("Reconciler", func() {
 		Expect(errors.IsNotFound(err)).Should(Equal(true))
 	},
 		Entry("verify - unused deployment deleted",
-			func() (runtime.Object, error) {
+			func() (client.Object, error) {
 				deployment := testcr.ResourceBuilder.CreateDeployment("fake-deployment", testcr.Namespace, "match-key", "match-value", "", int32(1), corev1.PodSpec{}, nil)
 				return deployment, nil
 			}),
 
 		Entry("verify - unused crd deleted",
-			func() (runtime.Object, error) {
+			func() (client.Object, error) {
 				crd := &extv1.CustomResourceDefinition{
 					TypeMeta: metav1.TypeMeta{
 						APIVersion: "apiextensions.k8s.io/v1",
@@ -638,7 +634,7 @@ var _ = Describe("Reconciler", func() {
 	})
 })
 
-func getConfig(c realClient.Client, cr *testcr.Config) (*testcr.Config, error) {
+func getConfig(c client.Client, cr *testcr.Config) (*testcr.Config, error) {
 	result, err := getObject(c, cr)
 	if err != nil {
 		return nil, err
@@ -646,11 +642,11 @@ func getConfig(c realClient.Client, cr *testcr.Config) (*testcr.Config, error) {
 	return result.(*testcr.Config), nil
 }
 
-func createClient(scheme *runtime.Scheme, objs ...runtime.Object) realClient.Client {
+func createClient(scheme *runtime.Scheme, objs ...runtime.Object) client.Client {
 	return fakeClient.NewFakeClientWithScheme(scheme, objs...)
 }
 
-func createReconciler(client realClient.Client, s *runtime.Scheme, recorder record.EventRecorder) *reconciler.Reconciler {
+func createReconciler(client client.Client, s *runtime.Scheme, recorder record.EventRecorder) *reconciler.Reconciler {
 	crManager := &testcr.ConfigCrManager{}
 	return reconciler.NewReconciler(crManager, log, client, callbackDispatcher, s, createVersionLabel, "update-version", "last-applied-config", 0, finalizerName, recorder)
 }
@@ -659,11 +655,11 @@ func createConfig(name, uid string) *testcr.Config {
 	return &testcr.Config{ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID(uid)}, Status: testcr.ConfigStatus{}}
 }
 
-func (m *mockCallbackDispatcher) InvokeCallbacks(_ logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj runtime.Object, recorder record.EventRecorder) error {
+func (m *mockCallbackDispatcher) InvokeCallbacks(_ logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj client.Object, recorder record.EventRecorder) error {
 	return invokeCallbacks(cr, s, desiredObj, currentObj)
 }
 
-func (m *mockCallbackDispatcher) AddCallback(obj runtime.Object, cb callbacks.ReconcileCallback) {
+func (m *mockCallbackDispatcher) AddCallback(obj client.Object, cb callbacks.ReconcileCallback) {
 	addCallback(obj, cb)
 }
 
@@ -774,14 +770,14 @@ func setDeploymentsDegraded(args *args) {
 	doReconcile(args)
 }
 
-func getAllResources(cr runtime.Object) []runtime.Object {
+func getAllResources(cr client.Object) []client.Object {
 	crManager := testcr.ConfigCrManager{}
 	resources, err := crManager.GetAllResources(cr)
 	Expect(err).ToNot(HaveOccurred())
 	return resources
 }
 
-func getDeployment(client realClient.Client, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
+func getDeployment(client client.Client, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
 	result, err := getObject(client, deployment)
 	if err != nil {
 		return nil, err
@@ -789,25 +785,25 @@ func getDeployment(client realClient.Client, deployment *appsv1.Deployment) (*ap
 	return result.(*appsv1.Deployment), nil
 }
 
-func getObject(client realClient.Client, obj runtime.Object) (runtime.Object, error) {
+func getObject(c client.Client, obj client.Object) (client.Object, error) {
 	metaObj := obj.(metav1.Object)
-	key := realClient.ObjectKey{Namespace: metaObj.GetNamespace(), Name: metaObj.GetName()}
+	key := client.ObjectKey{Namespace: metaObj.GetNamespace(), Name: metaObj.GetName()}
 
 	typ := reflect.ValueOf(obj).Elem().Type()
-	result := reflect.New(typ).Interface().(runtime.Object)
+	result := reflect.New(typ).Interface().(client.Object)
 
-	if err := client.Get(context.TODO(), key, result); err != nil {
+	if err := c.Get(context.TODO(), key, result); err != nil {
 		return nil, err
 	}
 
 	return result, nil
 }
 
-func getModifiedResource(args *args, modify modifyResource, tomodify isModifySubject) (runtime.Object, runtime.Object, error) {
+func getModifiedResource(args *args, modify modifyResource, tomodify isModifySubject) (client.Object, client.Object, error) {
 	resources := getAllResources(args.config)
 
 	//find the resource to modify
-	var orig runtime.Object
+	var orig client.Object
 	for _, resource := range resources {
 		r, err := getObject(args.client, resource)
 		Expect(err).ToNot(HaveOccurred())
