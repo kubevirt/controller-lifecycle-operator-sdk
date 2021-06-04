@@ -136,7 +136,7 @@ type ReconcileSampleConfig struct {
 
 // Reconcile reads that state of the cluster for a SampleConfig object and makes changes based on the state read
 // and what is in the SampleConfig.Spec
-func (r *ReconcileSampleConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileSampleConfig) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling SampleConfig")
 	return r.reconciler.Reconcile(request, r.operatorArgs.OperatorVersion, reqLogger)
