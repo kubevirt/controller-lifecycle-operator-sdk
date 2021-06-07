@@ -3,17 +3,18 @@ package callbacks_test
 import (
 	"fmt"
 
-	"k8s.io/client-go/tools/record"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
-	testcr "kubevirt.io/controller-lifecycle-operator-sdk/tests/cr"
+	"k8s.io/client-go/tools/record"
 	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
+	testcr "kubevirt.io/controller-lifecycle-operator-sdk/tests/cr"
 )
 
 const (

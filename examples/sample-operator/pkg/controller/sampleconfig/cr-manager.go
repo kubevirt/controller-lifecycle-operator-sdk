@@ -4,12 +4,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis/sample/v1alpha1"
 	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/resources"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -38,23 +38,23 @@ type CrManager struct {
 }
 
 // IsCreating checks whether creation of the managed resources will be executed
-func (m *CrManager) IsCreating(cr controllerutil.Object) (bool, error) {
+func (m *CrManager) IsCreating(cr client.Object) (bool, error) {
 	config := cr.(*v1alpha1.SampleConfig)
 	return config.Status.Conditions == nil || len(config.Status.Conditions) == 0, nil
 }
 
 // Create creates empty CR
-func (m *CrManager) Create() controllerutil.Object {
+func (m *CrManager) Create() client.Object {
 	return new(v1alpha1.SampleConfig)
 }
 
 // Status extracts status from the cr
-func (m *CrManager) Status(cr runtime.Object) *sdkapi.Status {
+func (m *CrManager) Status(cr client.Object) *sdkapi.Status {
 	return &cr.(*v1alpha1.SampleConfig).Status.Status
 }
 
 // GetAllResources provides all resources managed by the cr
-func (m *CrManager) GetAllResources(obj runtime.Object) ([]runtime.Object, error) {
+func (m *CrManager) GetAllResources(obj client.Object) ([]client.Object, error) {
 	namespace := m.operatorArgs.Namespace
 
 	serviceAccount := resourceBuilder.CreateServiceAccount(HTTPServerName)
@@ -70,7 +70,7 @@ func (m *CrManager) GetAllResources(obj runtime.Object) ([]runtime.Object, error
 	httpDeployment := m.createHTTPServerDeployment(&cr.Spec.Infra)
 	httpService := m.createHTTPServerService()
 
-	return []runtime.Object{
+	return []client.Object{
 		serviceAccount,
 		role,
 		roleBinding,
@@ -107,8 +107,8 @@ func (m *CrManager) createHTTPServerDeployment(placement *sdkapi.NodePlacement) 
 }
 
 // GetDependantResourcesListObjects returns resource list objects of dependant resources
-func (m *CrManager) GetDependantResourcesListObjects() []runtime.Object {
-	return []runtime.Object{
+func (m *CrManager) GetDependantResourcesListObjects() []client.ObjectList {
+	return []client.ObjectList{
 		&appsv1.DeploymentList{},
 		&v1.ServiceList{},
 		&v1.ServiceAccountList{},

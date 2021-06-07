@@ -22,11 +22,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const lastsAppliedConfigurationAnnotation = "lastAppliedConfiguration"
@@ -143,13 +144,13 @@ var _ = Describe("MergeLabelsAndAnnotations", func() {
 
 var _ = Describe("StripStatusFromObject", func() {
 	It("Should not alter object without status", func() {
-		in := &corev1.PodList{}
-		out, err := StripStatusFromObject(in.DeepCopyObject())
+		in := &corev1.Secret{}
+		out, err := StripStatusFromObject(in.DeepCopyObject().(client.Object))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reflect.DeepEqual(out, in)).To(BeTrue())
 	})
 
-	DescribeTable("Should strip object status", func(in, expected controllerutil.Object) {
+	DescribeTable("Should strip object status", func(in, expected client.Object) {
 
 		out, err := StripStatusFromObject(in)
 		Expect(err).ToNot(HaveOccurred())
@@ -183,7 +184,7 @@ var _ = Describe("StripStatusFromObject", func() {
 		expected := &appsv1.Deployment{
 			Status: appsv1.DeploymentStatus{},
 		}
-		out, err := StripStatusFromObject(in.DeepCopyObject())
+		out, err := StripStatusFromObject(in.DeepCopyObject().(client.Object))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reflect.DeepEqual(out, in)).To(BeFalse())
 		Expect(reflect.DeepEqual(out, expected)).To(BeTrue())
