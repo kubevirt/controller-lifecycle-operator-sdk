@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk"
 	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/callbacks"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/reconciler"
@@ -164,8 +165,9 @@ var _ = Describe("Reconciler", func() {
 				resources := getAllResources(args.config)
 
 				for _, r := range resources {
-					_, err := getObject(args.client, r)
+					storedObj, err := getObject(args.client, r)
 					Expect(err).ToNot(HaveOccurred())
+					Expect(storedObj.GetLabels()[sdk.AppKubernetesPartOfLabel]).Should(Equal("testing"))
 				}
 				validateEvents(args.recorder, createNotReadyEventValidationMap())
 			})
@@ -632,6 +634,57 @@ var _ = Describe("Reconciler", func() {
 			Expect(args.config.Status.Phase).Should(Equal(sdkapi.PhaseDeleted))
 		})
 	})
+
+	Describe("Config CR changed during upgrade", func() {
+		It("should update labels from CR if they were changed", func() {
+			newVersion := "v0.0.2"
+			prevVersion := "v0.0.1"
+
+			args := createArgs(prevVersion)
+			doReconcile(args)
+
+			setDeploymentsReady(args)
+
+			Expect(args.config.Status.ObservedVersion).Should(Equal(prevVersion))
+			Expect(args.config.Status.OperatorVersion).Should(Equal(prevVersion))
+			Expect(args.config.Status.TargetVersion).Should(Equal(prevVersion))
+			Expect(args.config.Status.Phase).Should(Equal(sdkapi.PhaseDeployed))
+			Expect(args.config.GetLabels()[sdk.AppKubernetesVersionLabel]).Should(Equal("v0.0.0-tests"))
+
+			setDeploymentsDegraded(args)
+			args.version = newVersion
+			args.config.SetLabels(map[string]string{
+				sdk.AppKubernetesPartOfLabel:  "testing",
+				sdk.AppKubernetesVersionLabel: newVersion,
+			})
+			err := args.client.Update(context.TODO(), args.config)
+			Expect(err).ToNot(HaveOccurred())
+			doReconcile(args)
+
+			//verify upgraded has started
+			Expect(args.config.Status.OperatorVersion).Should(Equal(newVersion))
+			Expect(args.config.Status.ObservedVersion).Should(Equal(prevVersion))
+			Expect(args.config.Status.TargetVersion).Should(Equal(newVersion))
+			Expect(args.config.Status.Phase).Should(Equal(sdkapi.PhaseUpgrading))
+
+			//change deployment to ready
+			isReady := setDeploymentsReady(args)
+			Expect(isReady).Should(Equal(true))
+
+			//verify versions were updated
+			Expect(args.config.Status.Phase).Should(Equal(sdkapi.PhaseDeployed))
+			Expect(args.config.Status.OperatorVersion).Should(Equal(newVersion))
+			Expect(args.config.Status.TargetVersion).Should(Equal(newVersion))
+			Expect(args.config.Status.ObservedVersion).Should(Equal(newVersion))
+
+			resources := getAllResources(args.config)
+			for _, r := range resources {
+				storedObj, err := getObject(args.client, r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(storedObj.GetLabels()[sdk.AppKubernetesVersionLabel]).Should(Equal(newVersion))
+			}
+		})
+	})
 })
 
 func getConfig(c client.Client, cr *testcr.Config) (*testcr.Config, error) {
@@ -652,7 +705,17 @@ func createReconciler(client client.Client, s *runtime.Scheme, recorder record.E
 }
 
 func createConfig(name, uid string) *testcr.Config {
-	return &testcr.Config{ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID(uid)}, Status: testcr.ConfigStatus{}}
+	return &testcr.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			UID:  types.UID(uid),
+			Labels: map[string]string{
+				sdk.AppKubernetesPartOfLabel:  "testing",
+				sdk.AppKubernetesVersionLabel: "v0.0.0-tests",
+			},
+		},
+		Status: testcr.ConfigStatus{},
+	}
 }
 
 func (m *mockCallbackDispatcher) InvokeCallbacks(_ logr.Logger, cr interface{}, s callbacks.ReconcileState, desiredObj, currentObj client.Object, recorder record.EventRecorder) error {
