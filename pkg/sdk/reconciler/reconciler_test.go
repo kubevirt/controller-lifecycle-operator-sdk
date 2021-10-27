@@ -682,6 +682,10 @@ var _ = Describe("Reconciler", func() {
 				storedObj, err := getObject(args.client, r)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(storedObj.GetLabels()[sdk.AppKubernetesVersionLabel]).Should(Equal(newVersion))
+				switch typedObj := storedObj.(type) {
+				case *appsv1.Deployment:
+					Expect(typedObj.Spec.Template.GetLabels()[sdk.AppKubernetesVersionLabel]).Should(Equal(newVersion))
+				}
 			}
 		})
 	})
