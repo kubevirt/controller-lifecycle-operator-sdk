@@ -66,7 +66,7 @@ func newReconciler(mgr manager.Manager) (*ReconcileSampleConfig, error) {
 
 	callbackDispatcher := callbacks.NewCallbackDispatcher(log, cachingClient, uncachedClient, scheme, operatorArgs.Namespace)
 	eventRecorder := mgr.GetEventRecorderFor("sample-config-operator")
-	r := reconciler.NewReconciler(&CrManager{operatorArgs: operatorArgs}, log, cachingClient, callbackDispatcher, scheme, createVersionLabel, updateVersionLabel, lastAppliedConfigAnnotation, 0, "sample-finalizer", eventRecorder)
+	r := reconciler.NewReconciler(&CrManager{operatorArgs: operatorArgs}, log, cachingClient, callbackDispatcher, scheme, createVersionLabel, updateVersionLabel, lastAppliedConfigAnnotation, 0, "sample-finalizer", true, eventRecorder)
 
 	reconcileConfig := &ReconcileSampleConfig{
 		client:       cachingClient,
