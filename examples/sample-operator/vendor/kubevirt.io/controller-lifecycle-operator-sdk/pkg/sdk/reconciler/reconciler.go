@@ -101,6 +101,7 @@ type Reconciler struct {
 	perishablesSyncInterval     time.Duration
 	finalizerName               string
 	namespacedCR                bool
+	subresourceEnabled          bool
 
 	// Hooks
 	syncPerishables               PerishablesSynchronizer
@@ -183,7 +184,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request, operatorVersion string
 
 	res, err := r.ReconcileUpdate(reqLogger, cr, operatorVersion)
 	if sdk.ConditionsChanged(currentConditionValues, sdk.GetConditionValues(status.Conditions)) {
-		if err := r.CrUpdate(status.Phase, cr); err != nil {
+		if err := r.CrUpdateStatus(status.Phase, cr); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -224,6 +225,7 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr client.Object, opera
 
 			r.setLastAppliedConfiguration(desiredObj)
 			sdk.SetLabel(r.createVersionLabel, operatorVersion, desiredObj)
+			r.setRecommendedLabels(cr, desiredObj)
 
 			if err = controllerutil.SetControllerReference(cr, desiredObj, r.scheme); err != nil {
 				r.recorder.Event(cr, corev1.EventTypeWarning, createResourceFailed, fmt.Sprintf("Failed to create resource %s, %v", desiredObj.GetName(), err))
@@ -269,6 +271,9 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr client.Object, opera
 
 			// allow users to add new annotations (but not change ours)
 			sdk.MergeLabelsAndAnnotations(desiredObj, currentObj)
+
+			// recommended label values can change by installer, set on update as well
+			r.setRecommendedLabels(cr, currentObj)
 
 			if !sdk.IsMutable(currentObj) {
 				r.setLastAppliedConfiguration(desiredObj)
@@ -335,7 +340,7 @@ func (r *Reconciler) ReconcileUpdate(logger logr.Logger, cr client.Object, opera
 		//We are not moving to Deployed phase until new operator deployment is ready in case of Upgrade
 		status.ObservedVersion = operatorVersion
 		sdk.MarkCrHealthyMessage(cr, status, "DeployCompleted", "Deployment Completed", r.recorder)
-		if err = r.CrUpdate(sdkapi.PhaseDeployed, cr); err != nil {
+		if err = r.CrUpdateStatus(sdkapi.PhaseDeployed, cr); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -380,17 +385,18 @@ func (r *Reconciler) CheckForOrphans(logger logr.Logger, cr client.Object) (bool
 }
 
 // CrUpdate sets given phase on the CR and updates it in the cluster
-func (r *Reconciler) CrUpdate(phase sdkapi.Phase, cr client.Object) error {
+func (r *Reconciler) CrUpdate(cr client.Object) error {
+	return r.client.Update(context.TODO(), cr)
+}
+
+// CrUpdateStatus sets given phase on the CR and updates it in the cluster
+func (r *Reconciler) CrUpdateStatus(phase sdkapi.Phase, cr client.Object) error {
 	status := r.crManager.Status(cr)
 	status.Phase = phase
-	statusCopy := new(sdkapi.Status)
-	status.DeepCopyInto(statusCopy)
-	err := r.client.Update(context.TODO(), cr)
-	if err != nil {
-		return err
+	if r.subresourceEnabled {
+		return r.client.Status().Update(context.TODO(), cr)
 	}
-	statusCopy.DeepCopyInto(status)
-	return r.client.Status().Update(context.TODO(), cr)
+	return r.CrUpdate(cr)
 }
 
 // CrSetVersion sets version and phase on the CR object
@@ -403,14 +409,14 @@ func (r *Reconciler) CrSetVersion(cr client.Object, version string) error {
 	status.ObservedVersion = version
 	status.OperatorVersion = version
 	status.TargetVersion = version
-	return r.CrUpdate(phase, cr)
+	return r.CrUpdateStatus(phase, cr)
 }
 
 // CrError sets the CR's phase to "Error"
 func (r *Reconciler) CrError(cr client.Object) error {
 	status := r.status(cr)
 	if status.Phase != sdkapi.PhaseError {
-		return r.CrUpdate(sdkapi.PhaseError, cr)
+		return r.CrUpdateStatus(sdkapi.PhaseError, cr)
 	}
 	return nil
 }
@@ -446,7 +452,7 @@ func (r *Reconciler) WatchDependantResources(cr client.Object) error {
 func (r *Reconciler) ReconcileError(cr client.Object, message string) (reconcile.Result, error) {
 	status := r.status(cr)
 	sdk.MarkCrFailed(cr, status, "ConfigError", message, r.recorder)
-	if err := r.CrUpdate(status.Phase, cr); err != nil {
+	if err := r.CrUpdateStatus(status.Phase, cr); err != nil {
 		return reconcile.Result{}, err
 	}
 	if err := r.CrError(cr); err != nil {
@@ -588,7 +594,7 @@ func (r *Reconciler) CheckUpgrade(logger logr.Logger, cr client.Object, targetVe
 	if status.OperatorVersion != targetVersion {
 		status.OperatorVersion = targetVersion
 		status.TargetVersion = targetVersion
-		if err := r.CrUpdate(status.Phase, cr); err != nil {
+		if err := r.CrUpdateStatus(status.Phase, cr); err != nil {
 			return err
 		}
 	}
@@ -604,7 +610,7 @@ func (r *Reconciler) CheckUpgrade(logger logr.Logger, cr client.Object, targetVe
 		logger.Info("Observed version is not target version. Begin upgrade", "Observed version ", status.ObservedVersion, "TargetVersion", targetVersion)
 		sdk.MarkCrUpgradeHealingDegraded(cr, status, "UpgradeStarted", fmt.Sprintf("Started upgrade to version %s", targetVersion), r.recorder)
 		status.TargetVersion = targetVersion
-		if err := r.CrUpdate(sdkapi.PhaseUpgrading, cr); err != nil {
+		if err := r.CrUpdateStatus(sdkapi.PhaseUpgrading, cr); err != nil {
 			return err
 		}
 	}
@@ -699,7 +705,7 @@ func (r *Reconciler) ReconcileDelete(logger logr.Logger, cr client.Object, final
 
 	status := r.status(cr)
 	if status.Phase != sdkapi.PhaseDeleting {
-		if err := r.CrUpdate(sdkapi.PhaseDeleting, cr); err != nil {
+		if err := r.CrUpdateStatus(sdkapi.PhaseDeleting, cr); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -708,10 +714,13 @@ func (r *Reconciler) ReconcileDelete(logger logr.Logger, cr client.Object, final
 		return reconcile.Result{}, err
 	}
 
-	finalizers = append(finalizers[0:i], finalizers[i+1:]...)
+	if err := r.CrUpdateStatus(sdkapi.PhaseDeleted, cr); err != nil {
+		return reconcile.Result{}, err
+	}
 
+	finalizers = append(finalizers[0:i], finalizers[i+1:]...)
 	cr.SetFinalizers(finalizers)
-	if err := r.CrUpdate(sdkapi.PhaseDeleted, cr); err != nil {
+	if err := r.CrUpdate(cr); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -722,13 +731,22 @@ func (r *Reconciler) ReconcileDelete(logger logr.Logger, cr client.Object, final
 
 // CrInit initializes the CR and moves it to CR to  "Deploying" status
 func (r *Reconciler) CrInit(cr client.Object, operatorVersion string) error {
-	finalizers := append(cr.GetFinalizers(), r.finalizerName)
-	cr.SetFinalizers(finalizers)
 	status := r.status(cr)
 	status.OperatorVersion = operatorVersion
 	status.TargetVersion = operatorVersion
+	if err := r.CrUpdateStatus(sdkapi.PhaseDeploying, cr); err != nil {
+		return err
+	}
 
-	return r.CrUpdate(sdkapi.PhaseDeploying, cr)
+	for _, f := range cr.GetFinalizers() {
+		if f == r.finalizerName {
+			return nil
+		}
+	}
+
+	finalizers := append(cr.GetFinalizers(), r.finalizerName)
+	cr.SetFinalizers(finalizers)
+	return r.CrUpdate(cr)
 }
 
 // GetCr retrieves the CR
@@ -763,11 +781,30 @@ func (r *Reconciler) completeUpgrade(logger logr.Logger, cr client.Object, opera
 	status.ObservedVersion = operatorVersion
 
 	sdk.MarkCrHealthyMessage(cr, status, "DeployCompleted", "Deployment Completed", r.recorder)
-	if err := r.CrUpdate(sdkapi.PhaseDeployed, cr); err != nil {
+	if err := r.CrUpdateStatus(sdkapi.PhaseDeployed, cr); err != nil {
 		return err
 	}
 
 	logger.Info("Successfully finished Upgrade and entered Deployed state", "from version", previousVersion, "to version", status.ObservedVersion)
 
 	return nil
+}
+
+func (r *Reconciler) setRecommendedLabels(cr client.Object, obj metav1.Object) {
+	labels := sdk.GetRecommendedLabelsFromCr(cr)
+
+	for k, v := range labels {
+		sdk.SetLabel(k, v, obj)
+	}
+
+	// Actual workload templates need special care, otherwise we just update the top level labels
+	switch typedObj := obj.(type) {
+	case *appsv1.Deployment:
+		if typedObj.Spec.Template.GetLabels() == nil {
+			typedObj.Spec.Template.SetLabels(make(map[string]string))
+		}
+		for k, v := range labels {
+			typedObj.Spec.Template.GetLabels()[k] = v
+		}
+	}
 }

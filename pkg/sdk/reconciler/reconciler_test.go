@@ -705,7 +705,7 @@ func createClient(scheme *runtime.Scheme, objs ...runtime.Object) client.Client 
 
 func createReconciler(client client.Client, s *runtime.Scheme, recorder record.EventRecorder) *reconciler.Reconciler {
 	crManager := &testcr.ConfigCrManager{}
-	return reconciler.NewReconciler(crManager, log, client, callbackDispatcher, s, createVersionLabel, "update-version", "last-applied-config", 0, finalizerName, recorder)
+	return reconciler.NewReconciler(crManager, log, client, callbackDispatcher, s, createVersionLabel, "update-version", "last-applied-config", 0, finalizerName, true, recorder)
 }
 
 func createConfig(name, uid string) *testcr.Config {
