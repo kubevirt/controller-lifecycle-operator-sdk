@@ -6,7 +6,7 @@ import (
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/resources"
 )
 

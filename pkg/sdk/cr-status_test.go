@@ -7,8 +7,8 @@ import (
 	v1 "github.com/openshift/custom-resource-status/conditions/v1"
 	v12 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk"
-	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	testcr "kubevirt.io/controller-lifecycle-operator-sdk/tests/cr"
 )
 
