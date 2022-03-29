@@ -8,7 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
