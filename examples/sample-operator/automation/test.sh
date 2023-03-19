@@ -33,3 +33,7 @@ make cluster-up
 make cluster-sync
 
 ./automation/execute-tests.sh
+
+# Unit tests
+cd "$(git rev-parse --show-toplevel)"
+go test -v ./...
