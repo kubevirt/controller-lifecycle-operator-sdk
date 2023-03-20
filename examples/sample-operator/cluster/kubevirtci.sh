@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export KUBEVIRT_PROVIDER=${KUBEVIRT_PROVIDER:-'k8s-1.18'}
-export KUBEVIRTCI_VERSION=${KUBEVIRTCI_VERSION:-'463da29b9cbdcaa22daed3a8ef5c5e864f582b0b'}
+export KUBEVIRT_PROVIDER=${KUBEVIRT_PROVIDER:-'k8s-1.24'}
+export KUBEVIRTCI_VERSION=${KUBEVIRTCI_VERSION:-'4b9b02c79acc237bc0c56201f213a854d204c088'}
+export KUBEVIRTCI_TAG=2303092154-4b9b02c
+export KUBEVIRTCI_RUNTIME=docker
 
 KUBEVIRTCI_PATH="${PWD}/_kubevirtci"
 

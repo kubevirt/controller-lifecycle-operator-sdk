@@ -173,17 +173,42 @@ var _ = Describe("Reconciler", func() {
 			})
 
 			It("should delete", func() {
+				deployment := &appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "apps/v1",
+						Kind:       "Deployment",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "helper-deployment",
+						Namespace: testcr.Namespace,
+					},
+				}
+
 				args := createArgs(version)
+				invokeCallbacks = func(_ interface{}, state callbacks.ReconcileState, _ client.Object, _ client.Object) error {
+					if state == callbacks.ReconcileStateOperatorDelete {
+						return args.client.Delete(context.TODO(), deployment)
+					}
+
+					return nil
+				}
+				err := args.client.Create(context.TODO(), deployment)
+				Expect(err).ToNot(HaveOccurred())
 				doReconcile(args)
 
-				args.config.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-				err := args.client.Update(context.TODO(), args.config)
+				// verify unused exists before upgrade is done
+				_, err = getObject(args.client, deployment)
 				Expect(err).ToNot(HaveOccurred())
 
-				doReconcile(args)
+				args.config.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+				err = args.client.Update(context.TODO(), args.config)
+				Expect(err).ToNot(HaveOccurred())
 
-				Expect(args.config.Finalizers).Should(BeEmpty())
-				Expect(args.config.Status.Phase).Should(Equal(sdkapi.PhaseDeleted))
+				doReconcileExpectDelete(args)
+
+				// verify that object no longer exists
+				_, err = getObject(args.client, deployment)
+				Expect(errors.IsNotFound(err)).Should(Equal(true))
 			})
 		})
 	})
@@ -586,6 +611,7 @@ var _ = Describe("Reconciler", func() {
 			_ = args.reconciler.CrSetVersion(args.config, prevVersion)
 			//mark CR for deletion
 			args.config.SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
+			args.config.Finalizers = append(args.config.Finalizers, "keepmearound")
 			err := args.client.Update(context.TODO(), args.config)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -620,6 +646,7 @@ var _ = Describe("Reconciler", func() {
 
 			//mark CR for deletion
 			args.config.SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
+			args.config.Finalizers = append(args.config.Finalizers, "keepmearound")
 			err = args.client.Update(context.TODO(), args.config)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -777,6 +804,16 @@ func doReconcileError(args *args) {
 
 	args.config, err = getConfig(args.client, args.config)
 	Expect(err).ToNot(HaveOccurred())
+}
+
+func doReconcileExpectDelete(args *args) {
+	result, err := args.reconciler.Reconcile(reconcileRequest(args.config.Name), args.version, log)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(result.Requeue).To(BeFalse())
+
+	_, err = getConfig(args.client, args.config)
+	Expect(err).To(HaveOccurred())
+	Expect(errors.IsNotFound(err)).To(BeTrue())
 }
 
 func setDeploymentsReady(args *args) bool {
