@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -566,7 +567,7 @@ func (r *Reconciler) WatchResourceTypes(resources ...client.Object) error {
 		predicates := []predicate.Predicate{sdk.NewIgnoreLeaderElectionPredicate()}
 
 		if err := r.controller.Watch(source.Kind(r.getCache(), resource), eventHandler, predicates...); err != nil {
-			if meta.IsNoMatchError(err) {
+			if meta.IsNoMatchError(err) || strings.Contains(err.Error(), "failed to find API group") {
 				r.log.Info("No match for type, NOT WATCHING", "type", t)
 				continue
 			}
