@@ -31,7 +31,7 @@ var _ = Describe("Callback dispatcher ", func() {
 			Namespace: "svc-ns",
 		},
 	}
-	client := fakeClient.NewFakeClientWithScheme(s, &existingService)
+	client := fakeClient.NewClientBuilder().WithScheme(s).WithRuntimeObjects(&existingService).Build()
 	cd := callbacks.NewCallbackDispatcher(log, client, client, s, namespace)
 
 	It("should register and invoke callback", func() {
