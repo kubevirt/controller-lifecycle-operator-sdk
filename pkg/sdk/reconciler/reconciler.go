@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	conditions "github.com/openshift/custom-resource-status/conditions/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -466,7 +467,6 @@ func (r *Reconciler) ReconcileError(cr client.Object, message string) (reconcile
 // CheckDegraded checks whether the deployment is degraded and updates CR status conditions accordingly
 func (r *Reconciler) CheckDegraded(logger logr.Logger, cr client.Object) (bool, error) {
 	degraded := false
-	requiresIntervention := false
 
 	deployments, err := r.GetAllDeployments(cr)
 	if err != nil {
@@ -480,10 +480,6 @@ func (r *Reconciler) CheckDegraded(logger logr.Logger, cr client.Object) (bool, 
 			return true, err
 		}
 
-		if !sdk.CheckDeploymentRequiresIntervention(deployment) {
-			requiresIntervention = true
-		}
-
 		if !sdk.CheckDeploymentReady(deployment) {
 			degraded = true
 			break
@@ -492,13 +488,18 @@ func (r *Reconciler) CheckDegraded(logger logr.Logger, cr client.Object) (bool, 
 
 	logger.Info("Degraded check", "Degraded", degraded)
 
-	// If not upgrading, aggregate deployment conditions in CR
+	// If deployed and degraded, mark degraded, otherwise we are still deploying or not degraded.
 	status := r.status(cr)
-	if degraded && requiresIntervention && !sdk.IsUpgrading(status) {
-		sdk.MarkCrFailed(cr, status, "DeploymentError", "One or more of the deployments require intervention to progress", r.recorder)
-		if err := r.CrUpdateStatus(status.Phase, cr); err != nil {
-			return true, err
-		}
+	if degraded && status.Phase == sdkapi.PhaseDeployed {
+		conditions.SetStatusCondition(&status.Conditions, conditions.Condition{
+			Type:   conditions.ConditionDegraded,
+			Status: corev1.ConditionTrue,
+		})
+	} else {
+		conditions.SetStatusCondition(&status.Conditions, conditions.Condition{
+			Type:   conditions.ConditionDegraded,
+			Status: corev1.ConditionFalse,
+		})
 	}
 
 	logger.Info("Finished degraded check", "conditions", status.Conditions)
