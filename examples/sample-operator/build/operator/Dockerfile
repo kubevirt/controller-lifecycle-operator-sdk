@@ -1,4 +1,4 @@
-FROM golang:1.17 AS builder
+FROM golang:1.20 AS builder
 WORKDIR /src/sample-operator/
 COPY . .
 ENV GOFLAGS=-mod=vendor
