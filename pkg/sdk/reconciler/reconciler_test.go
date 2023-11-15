@@ -122,10 +122,10 @@ var _ = Describe("Reconciler", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(args.mockController.WatchCalls).To(HaveLen(1))
-			// src := args.mockController.WatchCalls[0].Src
-			// // kind, ok := src.(*source.Kind)
-			// // Expect(ok).To(BeTrue())
-			// // Expect(kind.Type).To(BeAssignableToTypeOf(&testcr.Config{}))
+			src := args.mockController.WatchCalls[0].Src
+			v := reflect.ValueOf(src).Elem()
+			t := v.FieldByName("Type").Interface().(client.Object)
+			Expect(t).To(BeAssignableToTypeOf(&testcr.Config{}))
 		})
 	})
 
