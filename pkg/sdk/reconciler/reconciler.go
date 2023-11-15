@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
+	conditions "github.com/openshift/custom-resource-status/conditions/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -53,7 +56,7 @@ type SanityChecker func(cr client.Object, logger logr.Logger) (*reconcile.Result
 // WatchRegistrator is expected to register additional resource watchers if required
 type WatchRegistrator func() error
 
-//PreCreateHook is expected to perform custom actions before the creation of the managed resources is initiated
+// PreCreateHook is expected to perform custom actions before the creation of the managed resources is initiated
 type PreCreateHook func(cr client.Object) error
 
 // CrManager defines interface that needs to be provided for the reconciler to operate
@@ -96,6 +99,7 @@ type Reconciler struct {
 	lastAppliedConfigAnnotation string
 	updateVersionLabel          string
 	scheme                      *runtime.Scheme
+	getCache                    func() cache.Cache
 	recorder                    record.EventRecorder
 	perishablesSyncInterval     time.Duration
 	finalizerName               string
@@ -464,7 +468,6 @@ func (r *Reconciler) ReconcileError(cr client.Object, message string) (reconcile
 // CheckDegraded checks whether the deployment is degraded and updates CR status conditions accordingly
 func (r *Reconciler) CheckDegraded(logger logr.Logger, cr client.Object) (bool, error) {
 	degraded := false
-	requiresIntervention := false
 
 	deployments, err := r.GetAllDeployments(cr)
 	if err != nil {
@@ -478,10 +481,6 @@ func (r *Reconciler) CheckDegraded(logger logr.Logger, cr client.Object) (bool, 
 			return true, err
 		}
 
-		if !sdk.CheckDeploymentRequiresIntervention(deployment) {
-			requiresIntervention = true
-		}
-
 		if !sdk.CheckDeploymentReady(deployment) {
 			degraded = true
 			break
@@ -490,13 +489,18 @@ func (r *Reconciler) CheckDegraded(logger logr.Logger, cr client.Object) (bool, 
 
 	logger.Info("Degraded check", "Degraded", degraded)
 
-	// If not upgrading, aggregate deployment conditions in CR
+	// If deployed and degraded, mark degraded, otherwise we are still deploying or not degraded.
 	status := r.status(cr)
-	if degraded && requiresIntervention && !sdk.IsUpgrading(status) {
-		sdk.MarkCrFailed(cr, status, "DeploymentError", "One or more of the deployments require intervention to progress", r.recorder)
-		if err := r.CrUpdateStatus(status.Phase, cr); err != nil {
-			return true, err
-		}
+	if degraded && status.Phase == sdkapi.PhaseDeployed {
+		conditions.SetStatusCondition(&status.Conditions, conditions.Condition{
+			Type:   conditions.ConditionDegraded,
+			Status: corev1.ConditionTrue,
+		})
+	} else {
+		conditions.SetStatusCondition(&status.Conditions, conditions.Condition{
+			Type:   conditions.ConditionDegraded,
+			Status: corev1.ConditionFalse,
+		})
 	}
 
 	logger.Info("Finished degraded check", "conditions", status.Conditions)
@@ -540,7 +544,7 @@ func (r *Reconciler) GetAllDeployments(cr client.Object) ([]*appsv1.Deployment, 
 // WatchCR registers watch for the managed CR
 func (r *Reconciler) WatchCR() error {
 	// Watch for changes to managed CR
-	return r.controller.Watch(&source.Kind{Type: r.crManager.Create()}, &handler.EnqueueRequestForObject{})
+	return r.controller.Watch(source.Kind(r.getCache(), r.crManager.Create()), &handler.EnqueueRequestForObject{})
 }
 
 // InvokeCallbacks executes callbacks registered
@@ -558,15 +562,12 @@ func (r *Reconciler) WatchResourceTypes(resources ...client.Object) error {
 			continue
 		}
 
-		eventHandler := &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    r.crManager.Create(),
-		}
+		eventHandler := handler.EnqueueRequestForOwner(r.scheme, r.client.RESTMapper(), r.crManager.Create(), handler.OnlyControllerOwner())
 
 		predicates := []predicate.Predicate{sdk.NewIgnoreLeaderElectionPredicate()}
 
-		if err := r.controller.Watch(&source.Kind{Type: resource}, eventHandler, predicates...); err != nil {
-			if meta.IsNoMatchError(err) {
+		if err := r.controller.Watch(source.Kind(r.getCache(), resource), eventHandler, predicates...); err != nil {
+			if meta.IsNoMatchError(err) || strings.Contains(err.Error(), "failed to find API group") {
 				r.log.Info("No match for type, NOT WATCHING", "type", t)
 				continue
 			}

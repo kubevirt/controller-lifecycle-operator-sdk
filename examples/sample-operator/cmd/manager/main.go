@@ -21,10 +21,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/apis"
 	"kubevirt.io/controller-lifecycle-operator-sdk/examples/sample-operator/pkg/controller"
@@ -92,8 +94,14 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace:          namespace,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Cache: cache.Options{
+			DefaultNamespaces: map[string]cache.Config{
+				namespace: {},
+			},
+		},
+		Metrics: server.Options{
+			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		},
 	})
 	if err != nil {
 		log.Error(err, "")

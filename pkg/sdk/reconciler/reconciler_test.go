@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -21,12 +20,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk"
@@ -115,7 +114,7 @@ var _ = Describe("Reconciler", func() {
 			Expect(args.config.Status.TargetVersion).To(Equal(newVersion))
 		})
 
-		It("should register CR watching in cantroller", func() {
+		It("should register CR watching in controller", func() {
 			args := createArgs(version)
 
 			err := args.reconciler.WatchCR()
@@ -124,9 +123,9 @@ var _ = Describe("Reconciler", func() {
 
 			Expect(args.mockController.WatchCalls).To(HaveLen(1))
 			src := args.mockController.WatchCalls[0].Src
-			kind, ok := src.(*source.Kind)
-			Expect(ok).To(BeTrue())
-			Expect(kind.Type).To(BeAssignableToTypeOf(&testcr.Config{}))
+			v := reflect.ValueOf(src).Elem()
+			t := v.FieldByName("Type").Interface().(client.Object)
+			Expect(t).To(BeAssignableToTypeOf(&testcr.Config{}))
 		})
 	})
 
@@ -200,8 +199,7 @@ var _ = Describe("Reconciler", func() {
 				_, err = getObject(args.client, deployment)
 				Expect(err).ToNot(HaveOccurred())
 
-				args.config.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-				err = args.client.Update(context.TODO(), args.config)
+				err = args.client.Delete(context.TODO(), args.config)
 				Expect(err).ToNot(HaveOccurred())
 
 				doReconcileExpectDelete(args)
@@ -610,9 +608,10 @@ var _ = Describe("Reconciler", func() {
 			//Modify CRD to be of previousVersion
 			_ = args.reconciler.CrSetVersion(args.config, prevVersion)
 			//mark CR for deletion
-			args.config.SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
 			args.config.Finalizers = append(args.config.Finalizers, "keepmearound")
 			err := args.client.Update(context.TODO(), args.config)
+			Expect(err).ToNot(HaveOccurred())
+			err = args.client.Delete(context.TODO(), args.config)
 			Expect(err).ToNot(HaveOccurred())
 
 			doReconcile(args)
@@ -645,9 +644,10 @@ var _ = Describe("Reconciler", func() {
 			doReconcile(args)
 
 			//mark CR for deletion
-			args.config.SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
 			args.config.Finalizers = append(args.config.Finalizers, "keepmearound")
 			err = args.client.Update(context.TODO(), args.config)
+			Expect(err).ToNot(HaveOccurred())
+			err = args.client.Delete(context.TODO(), args.config)
 			Expect(err).ToNot(HaveOccurred())
 
 			doReconcile(args)
@@ -726,13 +726,16 @@ func getConfig(c client.Client, cr *testcr.Config) (*testcr.Config, error) {
 	return result.(*testcr.Config), nil
 }
 
-func createClient(scheme *runtime.Scheme, objs ...runtime.Object) client.Client {
-	return fakeClient.NewFakeClientWithScheme(scheme, objs...)
+func createClient(scheme *runtime.Scheme, objs ...client.Object) client.Client {
+	return fakeClient.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).WithStatusSubresource(objs...).Build()
 }
 
 func createReconciler(client client.Client, s *runtime.Scheme, recorder record.EventRecorder) *reconciler.Reconciler {
 	crManager := &testcr.ConfigCrManager{}
-	return reconciler.NewReconciler(crManager, log, client, callbackDispatcher, s, createVersionLabel, "update-version", "last-applied-config", 0, finalizerName, true, recorder)
+	getCache := func() cache.Cache {
+		return nil
+	}
+	return reconciler.NewReconciler(crManager, log, client, callbackDispatcher, s, getCache, createVersionLabel, "update-version", "last-applied-config", 0, finalizerName, true, recorder)
 }
 
 func createConfig(name, uid string) *testcr.Config {
@@ -835,7 +838,7 @@ func setDeploymentsReady(args *args) bool {
 		if d.Spec.Replicas != nil {
 			d.Status.Replicas = *d.Spec.Replicas
 			d.Status.ReadyReplicas = d.Status.Replicas
-			err = args.client.Update(context.TODO(), d)
+			err = args.client.Status().Update(context.TODO(), d)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
@@ -866,7 +869,7 @@ func setDeploymentsDegraded(args *args) {
 		if d.Spec.Replicas != nil {
 			d.Status.Replicas = int32(0)
 			d.Status.ReadyReplicas = d.Status.Replicas
-			err = args.client.Update(context.TODO(), d)
+			err = args.client.Status().Update(context.TODO(), d)
 			Expect(err).ToNot(HaveOccurred())
 		}
 

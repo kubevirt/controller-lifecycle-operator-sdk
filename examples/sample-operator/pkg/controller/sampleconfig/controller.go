@@ -66,7 +66,7 @@ func newReconciler(mgr manager.Manager) (*ReconcileSampleConfig, error) {
 
 	callbackDispatcher := callbacks.NewCallbackDispatcher(log, cachingClient, uncachedClient, scheme, operatorArgs.Namespace)
 	eventRecorder := mgr.GetEventRecorderFor("sample-config-operator")
-	r := reconciler.NewReconciler(&CrManager{operatorArgs: operatorArgs}, log, cachingClient, callbackDispatcher, scheme, createVersionLabel, updateVersionLabel, lastAppliedConfigAnnotation, 0, "sample-finalizer", true, eventRecorder)
+	r := reconciler.NewReconciler(&CrManager{operatorArgs: operatorArgs}, log, cachingClient, callbackDispatcher, scheme, mgr.GetCache, createVersionLabel, updateVersionLabel, lastAppliedConfigAnnotation, 0, "sample-finalizer", true, eventRecorder)
 
 	reconcileConfig := &ReconcileSampleConfig{
 		client:       cachingClient,
@@ -111,7 +111,7 @@ func (r *ReconcileSampleConfig) add(mgr manager.Manager) error {
 	r.SetController(c)
 
 	// Watch for changes to primary resource SampleConfig
-	err = c.Watch(&source.Kind{Type: &samplev1alpha1.SampleConfig{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &samplev1alpha1.SampleConfig{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
