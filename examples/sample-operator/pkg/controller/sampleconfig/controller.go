@@ -111,7 +111,7 @@ func (r *ReconcileSampleConfig) add(mgr manager.Manager) error {
 	r.SetController(c)
 
 	// Watch for changes to primary resource SampleConfig
-	err = c.Watch(source.Kind(mgr.GetCache(), &samplev1alpha1.SampleConfig{}), &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &samplev1alpha1.SampleConfig{}, &handler.TypedEnqueueRequestForObject[*samplev1alpha1.SampleConfig]{}))
 	if err != nil {
 		return err
 	}

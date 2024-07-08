@@ -26,7 +26,6 @@ set -ex
 
 # Extend path to use also local installation of the golang
 export PATH=$PATH:/usr/local/go/bin
-export KUBEVIRT_PROVIDER=$TARGET
 
 make cluster-down
 make cluster-up
