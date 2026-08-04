@@ -37,8 +37,9 @@ func (b *ResourceBuilder) WithOperatorLabels(labels map[string]string) map[strin
 
 // CreateOperatorDeployment creates deployment
 func (b *ResourceBuilder) CreateOperatorDeployment(name, namespace, matchKey, matchValue, serviceAccount string, numReplicas int32, podSpec corev1.PodSpec) *appsv1.Deployment {
-	labels := WithLabels(map[string]string{matchKey: matchValue}, b.operatorLabels)
-	return CreateDeployment(name, namespace, labels, labels, numReplicas, podSpec, serviceAccount, nil)
+	selectorLabels := WithLabels(map[string]string{matchKey: matchValue}, b.operatorLabels)
+	podLabels := WithLabels(map[string]string{matchKey: matchValue}, b.operatorLabels)
+	return CreateDeployment(name, namespace, selectorLabels, podLabels, numReplicas, podSpec, serviceAccount, nil)
 }
 
 // CreateDeployment creates deployment
