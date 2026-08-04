@@ -52,7 +52,7 @@ func (b *ResourceBuilder) CreateRoleBinding(name, roleRef, serviceAccount, servi
 
 // CreateRole creates role
 func (b *ResourceBuilder) CreateRole(name string, rules []rbacv1.PolicyRule) *rbacv1.Role {
-	return &rbacv1.Role{
+	role := &rbacv1.Role{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "rbac.authorization.k8s.io/v1",
 			Kind:       "Role",
@@ -61,8 +61,12 @@ func (b *ResourceBuilder) CreateRole(name string, rules []rbacv1.PolicyRule) *rb
 			Name:   name,
 			Labels: b.WithCommonLabels(nil),
 		},
-		Rules: rules,
 	}
+	if len(rules) > 0 {
+		// avoid hotloop over empty rules/nil
+		role.Rules = rules
+	}
+	return role
 }
 
 // CreateClusterRoleBinding creates cluster role binding
@@ -132,7 +136,7 @@ func CreateClusterRoleBinding(name, roleRef, serviceAccount, serviceAccountNames
 
 // CreateClusterRole creates a cluster role
 func CreateClusterRole(name string, rules []rbacv1.PolicyRule, labels map[string]string) *rbacv1.ClusterRole {
-	return &rbacv1.ClusterRole{
+	clusterRole := &rbacv1.ClusterRole{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "rbac.authorization.k8s.io/v1",
 			Kind:       "ClusterRole",
@@ -141,6 +145,10 @@ func CreateClusterRole(name string, rules []rbacv1.PolicyRule, labels map[string
 			Name:   name,
 			Labels: labels,
 		},
-		Rules: rules,
 	}
+	if len(rules) > 0 {
+		// avoid hotloop over empty rules/nil
+		clusterRole.Rules = rules
+	}
+	return clusterRole
 }
