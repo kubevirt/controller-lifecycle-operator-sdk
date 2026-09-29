@@ -142,6 +142,35 @@ var _ = Describe("MergeLabelsAndAnnotations", func() {
 	})
 })
 
+var _ = Describe("MergeObject", func() {
+	It("will merge a typed object when current object has no type meta", func() {
+		original := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Pod",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "default",
+			},
+		}
+		Expect(SetLastAppliedConfiguration(original, lastsAppliedConfigurationAnnotation)).To(Succeed())
+
+		desired := original.DeepCopy()
+		desired.Labels = map[string]string{"managed": "true"}
+		current := original.DeepCopy()
+		current.APIVersion = ""
+		current.Kind = ""
+
+		merged, err := MergeObject(desired, current, lastsAppliedConfigurationAnnotation)
+		Expect(err).ToNot(HaveOccurred())
+		pod := merged.(*corev1.Pod)
+		Expect(pod.Labels).To(HaveKeyWithValue("managed", "true"))
+		Expect(pod.APIVersion).To(BeEmpty())
+		Expect(pod.Kind).To(BeEmpty())
+	})
+})
+
 var _ = Describe("StripStatusFromObject", func() {
 	It("Should not alter object without status", func() {
 		in := &corev1.Secret{}

@@ -89,6 +89,20 @@ func MergeObject(desiredObj, currentObj client.Object, lastAppliedConfigAnnotati
 	if err != nil {
 		return nil, err
 	}
+	if _, isUnstructured := currentObj.(runtime.Unstructured); !isUnstructured && currentObj.GetObjectKind().GroupVersionKind().Empty() {
+		original, err = removeGVKFromObjectJSON(original)
+		if err != nil {
+			return nil, err
+		}
+		modified, err = removeGVKFromObjectJSON(modified)
+		if err != nil {
+			return nil, err
+		}
+		current, err = removeGVKFromObjectJSON(current)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	preconditions := []mergepatch.PreconditionFunc{
 		mergepatch.RequireKeyUnchanged("apiVersion"),
@@ -112,6 +126,21 @@ func MergeObject(desiredObj, currentObj client.Object, lastAppliedConfigAnnotati
 	}
 
 	return result, nil
+}
+
+func removeGVKFromObjectJSON(obj []byte) ([]byte, error) {
+	if len(obj) == 0 {
+		return obj, nil
+	}
+
+	var object map[string]interface{}
+	if err := json.Unmarshal(obj, &object); err != nil {
+		return nil, err
+	}
+	delete(object, "apiVersion")
+	delete(object, "kind")
+
+	return json.Marshal(object)
 }
 
 func StripStatusFromObject(obj client.Object) (client.Object, error) {
